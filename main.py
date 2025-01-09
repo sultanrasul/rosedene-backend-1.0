@@ -8,14 +8,8 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-
 app = Flask(__name__)
 
-
-
-discordUrl = os.getenv("DISCORD-URL")
-
-orbitTechIcon = "https://cdn.discordapp.com/attachments/743206830209237103/1114538805203058738/funkypanda.png?ex=6533cb26&is=65215626&hm=6483ee595d1b4a9f59264947f09fe1da2d1f91a2b19f4eb98d56c9e5f7970d24&"
 
 @app.after_request
 def add_cors_headers(response):
@@ -26,16 +20,16 @@ def add_cors_headers(response):
 
 # Apartment IDs dictionary
 apartment_ids = {
-    3069140: 'Rosedene Highland House - Emperor Apartment 1',
-    3070529: 'Rosedene Highland House - Emperor Apartment 2',
-    3070534: 'Rosedene Highland House - Emperor Apartment 6',
-    3070536: 'Rosedene Highland House - Emperor Apartment 7',
-    3070531: 'Rosedene Highland House - King Studio Apartment 4',
-    3070533: 'Rosedene Highland House - King Studio Apartment 5',
-    3070540: 'Rosedene Highland House - King Studio Apartment 9',
-    3070538: 'Rosedene Highland House - The Cottage Apartment 10',
-    3070537: 'Rosedene Highland House - The Cottage Apartment 8',
-    3070530: 'Rosedene Highland House - Emperor Studio Apart 3',
+    3069140: 'Emperor Apartment 1',
+    3070529: 'Emperor Apartment 2',
+    3070534: 'Emperor Apartment 6',
+    3070536: 'Emperor Apartment 7',
+    3070531: 'King Studio Apartment 4',
+    3070533: 'King Studio Apartment 5',
+    3070540: 'King Studio Apartment 9',
+    3070538: 'The Cottage Apartment 10',
+    3070537: 'The Cottage Apartment 8',
+    3070530: 'Emperor Studio Apartment 3',
 
 }
 

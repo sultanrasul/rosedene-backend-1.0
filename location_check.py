@@ -23,16 +23,16 @@ class Pull_ListPropertiesBlocks_RQ:
         return ET.tostring(root, encoding="unicode")
 
     def check_blocked_properties(self, response_xml, apartment_ids):
-
         # Parse the response XML to a dictionary
         json_response = xmltodict.parse(response_xml)
+        print(json_response)
         
         # Extract blocked properties from the response
         properties = json_response["Pull_ListPropertiesBlocks_RS"].get("Properties", None)
         if not properties:
             # If there are no blocked properties, all apartments are available
             return {
-                "available": list(apartment_ids.values()),
+                "available": [{"id": apartment_id, "name": apartment_name} for apartment_id, apartment_name in apartment_ids.items()],
                 "blocked": []
             }
 
@@ -48,19 +48,18 @@ class Pull_ListPropertiesBlocks_RQ:
         else:
             # If "PropertyBlock" key is not present, assume no blocked properties
             return {
-                "available": list(apartment_ids.values()),
+                "available": [{"id": apartment_id, "name": apartment_name} for apartment_id, apartment_name in apartment_ids.items()],
                 "blocked": []
             }
 
         # Find available properties by subtracting blocked IDs from all apartment IDs
         available_ids = set(apartment_ids.keys()) - blocked_ids
 
-        # Map IDs to apartment names for available and blocked properties
-        available = [apartment_ids[apartment_id] for apartment_id in available_ids]
-        blocked = [apartment_ids[apartment_id] for apartment_id in blocked_ids if apartment_id in apartment_ids]
+        # Map IDs to dictionaries containing both ID and name for available and blocked properties
+        available = [{"id": apartment_id, "name": apartment_ids[apartment_id]} for apartment_id in available_ids]
+        blocked = [{"id": apartment_id, "name": apartment_ids[apartment_id]} for apartment_id in blocked_ids if apartment_id in apartment_ids]
 
         return {
             "available": available,
             "blocked": blocked
         }
-
