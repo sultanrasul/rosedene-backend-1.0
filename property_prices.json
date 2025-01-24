@@ -1,0 +1,202 @@
+[
+    {
+        "property_id": 3069140,
+        "price": {
+            "Status": {
+                "@ID": "0",
+                "#text": "Success"
+            },
+            "ResponseID": "9d99bd588a7349578c13bfd2900befc5",
+            "Prices": {
+                "@PropertyID": "3069140",
+                "Season": {
+                    "@DateFrom": "2025-01-24",
+                    "@DateTo": "2025-01-24",
+                    "Price": "259.0000",
+                    "Extra": "60.0000"
+                },
+                "FSPSeasons": null
+            }
+        }
+    },
+    {
+        "property_id": 3070529,
+        "price": {
+            "Status": {
+                "@ID": "0",
+                "#text": "Success"
+            },
+            "ResponseID": "8a47153bdb3a4fc18c5e4207f1fb208b",
+            "Prices": {
+                "@PropertyID": "3070529",
+                "Season": {
+                    "@DateFrom": "2025-01-24",
+                    "@DateTo": "2025-01-24",
+                    "Price": "259.0000",
+                    "Extra": "60.0000"
+                },
+                "FSPSeasons": null
+            }
+        }
+    },
+    {
+        "property_id": 3070534,
+        "price": {
+            "Status": {
+                "@ID": "0",
+                "#text": "Success"
+            },
+            "ResponseID": "29a9e6f39aab4d65aa2e7916990c0a2f",
+            "Prices": {
+                "@PropertyID": "3070534",
+                "Season": {
+                    "@DateFrom": "2025-01-24",
+                    "@DateTo": "2025-01-24",
+                    "Price": "259.0000",
+                    "Extra": "60.0000"
+                },
+                "FSPSeasons": null
+            }
+        }
+    },
+    {
+        "property_id": 3070536,
+        "price": {
+            "Status": {
+                "@ID": "0",
+                "#text": "Success"
+            },
+            "ResponseID": "6c7c4853cea04f64a654d424230e34a8",
+            "Prices": {
+                "@PropertyID": "3070536",
+                "Season": {
+                    "@DateFrom": "2025-01-24",
+                    "@DateTo": "2025-01-24",
+                    "Price": "259.0000",
+                    "Extra": "60.0000"
+                },
+                "FSPSeasons": null
+            }
+        }
+    },
+    {
+        "property_id": 3070531,
+        "price": {
+            "Status": {
+                "@ID": "0",
+                "#text": "Success"
+            },
+            "ResponseID": "d6e7f8f1c1fe4915bb4bb41e93aa2037",
+            "Prices": {
+                "@PropertyID": "3070531",
+                "Season": {
+                    "@DateFrom": "2025-01-24",
+                    "@DateTo": "2025-01-24",
+                    "Price": "199.0000",
+                    "Extra": "50.0000"
+                },
+                "FSPSeasons": null
+            }
+        }
+    },
+    {
+        "property_id": 3070533,
+        "price": {
+            "Status": {
+                "@ID": "0",
+                "#text": "Success"
+            },
+            "ResponseID": "45112525f44240dab1b68dd3d6f0079c",
+            "Prices": {
+                "@PropertyID": "3070533",
+                "Season": {
+                    "@DateFrom": "2025-01-24",
+                    "@DateTo": "2025-01-24",
+                    "Price": "199.0000",
+                    "Extra": "50.0000"
+                },
+                "FSPSeasons": null
+            }
+        }
+    },
+    {
+        "property_id": 3070540,
+        "price": {
+            "Status": {
+                "@ID": "0",
+                "#text": "Success"
+            },
+            "ResponseID": "7f0aeff40edf41bba6612e078007793e",
+            "Prices": {
+                "@PropertyID": "3070540",
+                "Season": {
+                    "@DateFrom": "2025-01-24",
+                    "@DateTo": "2025-01-24",
+                    "Price": "199.0000",
+                    "Extra": "50.0000"
+                },
+                "FSPSeasons": null
+            }
+        }
+    },
+    {
+        "property_id": 3070538,
+        "price": {
+            "Status": {
+                "@ID": "0",
+                "#text": "Success"
+            },
+            "ResponseID": "e562f27249eb4cd188d5ada34e679871",
+            "Prices": {
+                "@PropertyID": "3070538",
+                "Season": {
+                    "@DateFrom": "2025-01-24",
+                    "@DateTo": "2025-01-24",
+                    "Price": "259.0000",
+                    "Extra": "60.0000"
+                },
+                "FSPSeasons": null
+            }
+        }
+    },
+    {
+        "property_id": 3070537,
+        "price": {
+            "Status": {
+                "@ID": "0",
+                "#text": "Success"
+            },
+            "ResponseID": "145d92f38ba04701ad88d56706482f69",
+            "Prices": {
+                "@PropertyID": "3070537",
+                "Season": {
+                    "@DateFrom": "2025-01-24",
+                    "@DateTo": "2025-01-24",
+                    "Price": "259.0000",
+                    "Extra": "60.0000"
+                },
+                "FSPSeasons": null
+            }
+        }
+    },
+    {
+        "property_id": 3070530,
+        "price": {
+            "Status": {
+                "@ID": "0",
+                "#text": "Success"
+            },
+            "ResponseID": "4738ceb1081147949d7270013436af40",
+            "Prices": {
+                "@PropertyID": "3070530",
+                "Season": {
+                    "@DateFrom": "2025-01-24",
+                    "@DateTo": "2025-01-24",
+                    "Price": "199.0000",
+                    "Extra": "50.0000"
+                },
+                "FSPSeasons": null
+            }
+        }
+    }
+]

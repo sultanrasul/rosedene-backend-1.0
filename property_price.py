@@ -1,7 +1,10 @@
 import xml.etree.ElementTree as ET
 import xmltodict
 import requests
+import json
+import os
 from datetime import datetime
+
 
 class Pull_ListPropertyPrices_RQ:
     def __init__(self, username, password, property_id, date_from, date_to, api_endpoint):
@@ -28,7 +31,9 @@ class Pull_ListPropertyPrices_RQ:
         return price
 
     @staticmethod
-    def get_prices_for_multiple_properties(username, password, property_ids, date_from, date_to, api_endpoint):
+    def get_prices_for_multiple_properties_save_to_file(
+        username, password, property_ids, date_from, date_to, api_endpoint, file_path="property_prices.json"
+    ):
         prices = []
 
         for property_id in property_ids:
@@ -37,7 +42,7 @@ class Pull_ListPropertyPrices_RQ:
 
             # Make the API request
             response = requests.post(api_endpoint, data=serialized_request, headers={"Content-Type": "application/xml"})
-            
+
             if response.status_code == 200:
                 # Process the XML response
                 response_xml = response.text
@@ -45,5 +50,21 @@ class Pull_ListPropertyPrices_RQ:
                 prices.append({"property_id": property_id, "price": price})
             else:
                 print(f"Error fetching price for property {property_id}: {response.status_code}")
-        
+
+        # Save the data to a file
+        with open(file_path, "w") as file:
+            json.dump(prices, file, indent=4)
+
+        print(f"Prices successfully saved to {file_path}")
         return prices
+
+    @staticmethod
+    def get_prices_for_multiple_properties(file_path="property_prices.json"):
+        # Check if the file exists
+        if os.path.exists(file_path):
+            with open(file_path, "r") as file:
+                saved_prices = json.load(file)
+            return saved_prices
+        else:
+            print(f"No saved prices found in {file_path}. Please call 'get_prices_for_multiple_properties_save_to_file' first.")
+            return []
