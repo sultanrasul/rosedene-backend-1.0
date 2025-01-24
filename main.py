@@ -61,12 +61,7 @@ def check_blocked_apartments():
     properties = props_request.check_blocked_properties(response.text, apartment_ids)
 
     # Fetch prices for available apartments
-    available_ids = [prop['id'] for prop in properties['available']]
-    prices = Pull_ListPropertyPrices_RQ.get_prices_for_multiple_properties(
-        username, password, available_ids, api_endpoint=api_endpoint,
-        date_from=datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"]),
-        date_to=datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
-    )
+    prices = Pull_ListPropertyPrices_RQ.get_prices_for_multiple_properties()
 
     # Merge prices into available properties
     price_map = {
@@ -93,11 +88,7 @@ def check_price():
     print(date_from,date_to,property_ids)
     # Check Apartment Price
 
-    prices = Pull_ListPropertyPrices_RQ.get_prices_for_multiple_properties(
-        username, password, property_ids, api_endpoint=api_endpoint,
-        date_from=datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"]), 
-        date_to=datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
-    )
+    prices = Pull_ListPropertyPrices_RQ.get_prices_for_multiple_properties()
 
     return prices
 
