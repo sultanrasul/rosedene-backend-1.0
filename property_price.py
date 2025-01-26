@@ -59,7 +59,7 @@ class Pull_ListPropertyPrices_RQ:
         return prices
 
     @staticmethod
-    def get_prices_for_multiple_properties(file_path="property_prices.json"):
+    def get_all_prices(file_path="property_prices.json"):
         # Check if the file exists
         if os.path.exists(file_path):
             with open(file_path, "r") as file:
@@ -68,3 +68,43 @@ class Pull_ListPropertyPrices_RQ:
         else:
             print(f"No saved prices found in {file_path}. Please call 'get_prices_for_multiple_properties_save_to_file' first.")
             return []
+        
+    @staticmethod
+    def get_prices_for_property(property_id, file_path="property_prices.json"):
+        """
+        Get price data for a specific property ID from a JSON file.
+    
+        :param property_id: The ID of the property to fetch prices for.
+        :param file_path: The path to the JSON file containing property prices.
+        :return: The price data for the given property ID, or None if not found.
+        """
+        # Check if the file exists
+        if os.path.exists(file_path):
+            with open(file_path, "r") as file:
+                saved_prices = json.load(file)
+            
+            # Find the property with the matching ID
+            property_data = next((p for p in saved_prices if p.get("property_id") == property_id), None)
+            if property_data:
+                return property_data
+            else:
+                print(f"No data found for property ID: {property_id}.")
+                return None
+        else:
+            print(f"No saved prices found in {file_path}. Please call 'get_prices_for_multiple_properties_save_to_file' first.")
+            return None
+        
+    @staticmethod
+    def calculate_price(property_id, nights, guests):
+        price = Pull_ListPropertyPrices_RQ.get_prices_for_property(property_id=property_id)
+        dailyPrice = float(price["price"]["Prices"]["Season"]["Price"])
+        extra = float(price["price"]["Prices"]["Season"]["Extra"])
+        print(dailyPrice,extra)
+        
+        basePrice = (dailyPrice * int(nights)) + extra
+        if (int(guests) > 2):
+            basePrice += (int(guests)-2) * extra       
+
+        print(basePrice)
+        return basePrice
+
