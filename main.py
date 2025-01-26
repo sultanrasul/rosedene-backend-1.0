@@ -61,7 +61,7 @@ def check_blocked_apartments():
     properties = props_request.check_blocked_properties(response.text, apartment_ids)
 
     # Fetch prices for available apartments
-    prices = Pull_ListPropertyPrices_RQ.get_prices_for_multiple_properties()
+    prices = Pull_ListPropertyPrices_RQ.get_all_prices()
 
     # Merge prices into available properties
     price_map = {
@@ -83,12 +83,12 @@ def check_price():
 
     date_from = request.json['date_from']
     date_to = request.json['date_to']
-    property_ids = request.json['property_ids']
+    property_id = request.json['property_id']
 
-    print(date_from,date_to,property_ids)
+    print(date_from,date_to,property_id)
     # Check Apartment Price
 
-    prices = Pull_ListPropertyPrices_RQ.get_prices_for_multiple_properties()
+    prices = Pull_ListPropertyPrices_RQ.get_prices_for_property(property_id=property_id)
 
     return prices
 
@@ -116,32 +116,58 @@ def check_calendar():
 
 
 
-# @app.route('/create-checkout-session', methods=['POST'])
-# def create_checkout_session():
-#     try:
-#         checkout_session = stripe.checkout.Session.create(
-#             line_items=[
-#                 {
-#                     "price_data": {
-#                         "currency": "usd",
-#                         "product_data": {
-#                             "name": f"Stay from {data['check_in']} to {data['check_out']}",
-#                             "description": f"{data['adults']} Adults, {data['children']} Children (Ages: {data['children_ages']})"
-#                         },
-#                         "unit_amount": int(data['price']) * 100,  # Convert dollars to cents
-#                     },
-#                     "quantity": 1,
-#                 },
-#             ],
-#             mode='payment',
-#             success_url=YOUR_DOMAIN + '/success.html',
-#             cancel_url=YOUR_DOMAIN + '/cancel.html',
-#         )
-#     except Exception as e:
-#         return str(e)
+@app.route('/create-checkout-session', methods=['POST'])
+def create_checkout_session():
+    date_from = request.json['date_from']
+    date_to = request.json['date_to']
+    property_id = request.json['property_id']
+    adults = int(request.json['adults'])
+    children = int(request.json['children'])
+    childrenAges = request.json['childrenAges']
+    apartment_number = apartment_ids[3070534].split()[-1]
+    image = "https://rosedene.funkypanda.dev/"+str(apartment_number)+"/0.jpg"
 
-#     return redirect(checkout_session.url, code=303)
 
+    # Calculate the number of nights
+    date_from_obj = datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"])
+    date_to_obj = datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
+    nights = (date_to_obj - date_from_obj).days
+
+    # Get Price
+    price = Pull_ListPropertyPrices_RQ.calculate_price(property_id=property_id, nights=nights, guests=(adults+children))
+
+    displayDate = f'{date_from["day"]}/{date_from["month"]}/{date_from["year"]} - {date_to["day"]}/{date_to["month"]}/{date_to["year"]}'
+    description = f"{displayDate} • {adults} Adult{'s' if adults > 1 else ''}"
+    if children > 0:
+        description += f" • {children} Child{'ren' if children != 1 else ''}"
+
+    
+
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": "gbp",
+                        "product_data": {
+                            "name": apartment_ids[property_id],
+                            "description": description,
+                            "images": [image],
+                        },
+                        "unit_amount_decimal": price * 100,
+                    },
+                    "quantity": 1,
+                },
+            ],
+            mode='payment',
+            phone_number_collection={"enabled": True},
+            success_url=YOUR_DOMAIN + '/success.html',
+            cancel_url=YOUR_DOMAIN + '/cancel.html',
+        )
+    except Exception as e:
+        return str(e)
+
+    return jsonify({'url': checkout_session.url})
 
 
 if __name__ == '__main__':
