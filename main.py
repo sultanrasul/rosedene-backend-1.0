@@ -124,8 +124,10 @@ def create_checkout_session():
     adults = int(request.json['adults'])
     children = int(request.json['children'])
     childrenAges = request.json['childrenAges']
-    apartment_number = apartment_ids[3070534].split()[-1]
+    apartment_number = apartment_ids[property_id].split()[-1]
+
     image = "https://rosedene.funkypanda.dev/"+str(apartment_number)+"/0.jpg"
+    print(image)
 
 
     # Calculate the number of nights
@@ -161,13 +163,85 @@ def create_checkout_session():
             ],
             mode='payment',
             phone_number_collection={"enabled": True},
-            success_url=YOUR_DOMAIN + '/success.html',
+            success_url="http://127.0.0.1:5000/success?session_id={CHECKOUT_SESSION_ID}",
             cancel_url=YOUR_DOMAIN + '/cancel.html',
+            custom_fields=[
+                {
+                    "key": "special_request",
+                    "label": {"type": "custom", "custom": "Special Requests"},
+                    "type": "text",
+                    # 'text': {'default_value': "Enter Your Message Here..."},
+                    'optional': True,
+                }
+            ],
+            metadata={
+                "apartment_id": property_id,
+                "apartment_name": apartment_ids[property_id],
+                "date_from": f"{date_from['day']}/{date_from['month']}/{date_from['year']}",
+                "date_to": f"{date_to['day']}/{date_to['month']}/{date_to['year']}",
+                "adults": adults,
+                "children": children,
+                "children_ages": ",".join(str(e) for e in childrenAges),
+                "nights": nights,
+                "price": price
+            },
         )
     except Exception as e:
         return str(e)
 
     return jsonify({'url': checkout_session.url})
+
+@app.route('/success', methods=['GET'])
+def order_success():
+    session_id = request.args.get('session_id')
+    session = stripe.checkout.Session.retrieve(session_id)
+
+    #  Customer Details
+    name = session["customer_details"]["name"]
+    email = session["customer_details"]["email"]
+    phone_number = session["customer_details"]["phone"]
+    postal_code = session["customer_details"]["address"]["postal_code"]
+    country = session["customer_details"]["address"]["country"]
+
+    # Special Request
+    special_request = session.get("custom_fields", [{}])[0].get("text", {}).get("value", "") or ""
+
+    meta_data = session["metadata"]
+    adults = int(meta_data["adults"])
+    apartment_id = meta_data["apartment_id"]
+    apartment_name = meta_data["apartment_name"]
+    children = int(meta_data["children"])
+    childrenAges = []
+    if children > 0:
+        childrenAges = meta_data["children_ages"].split(",")
+    date_from = meta_data["date_from"]
+    date_to = meta_data["date_to"]
+    nights = int(meta_data["nights"])
+    
+    
+    print("Customer Details")
+    print(name)
+    print(email)
+    print(phone_number)
+    print(postal_code)
+    print(country)
+
+    print("Booking Information")
+    print(f"Adults: {adults}")
+    print(f"Children: {children}")
+    for i in range(len(childrenAges)):
+        print(f"Child {i+1} age: {childrenAges[i]}")
+    print(f"Date From: {date_from}")
+    print(f"Date To: {date_to}")
+    print(f"Nights: {nights}")
+
+
+
+    print(special_request)
+
+    redirect_url = f'http://localhost:5173/?name={name}&email={email}'
+
+    return redirect(redirect_url)
 
 
 if __name__ == '__main__':
