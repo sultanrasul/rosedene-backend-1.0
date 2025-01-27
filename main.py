@@ -81,11 +81,8 @@ def check_blocked_apartments():
 @app.route('/check_price', methods=['POST'])
 def check_price():
 
-    date_from = request.json['date_from']
-    date_to = request.json['date_to']
     property_id = request.json['property_id']
 
-    print(date_from,date_to,property_id)
     # Check Apartment Price
 
     prices = Pull_ListPropertyPrices_RQ.get_prices_for_property(property_id=property_id)
@@ -125,10 +122,25 @@ def create_checkout_session():
     children = int(request.json['children'])
     childrenAges = request.json['childrenAges']
     apartment_number = apartment_ids[property_id].split()[-1]
-
     image = "https://rosedene.funkypanda.dev/"+str(apartment_number)+"/0.jpg"
     print(image)
 
+     # Check Availability Calendar
+    avail_request = Pull_ListPropertyAvailabilityCalendar_RQ(
+        username, password, property_id=property_id,
+        date_from=datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"]), 
+        date_to=datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
+    )
+
+    response = requests.post(api_endpoint, data=avail_request.serialize_request(), headers={"Content-Type": "application/xml"})
+    calendar = avail_request.check_availability_calendar(response.text)
+    
+    for day in calendar:
+        print(day["IsBlocked"])
+        if day["IsBlocked"] == "true":
+            return jsonify({'error': 'This apartment is not available for these dates!'}), 420
+    
+    
 
     # Calculate the number of nights
     date_from_obj = datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"])
