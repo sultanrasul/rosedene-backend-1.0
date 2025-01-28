@@ -25,7 +25,6 @@ class Pull_ListPropertiesBlocks_RQ:
     def check_blocked_properties(self, response_xml, apartment_ids):
         # Parse the response XML to a dictionary
         json_response = xmltodict.parse(response_xml)
-        print(json_response)
         
         # Extract blocked properties from the response
         properties = json_response["Pull_ListPropertiesBlocks_RS"].get("Properties", None)

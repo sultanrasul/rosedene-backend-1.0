@@ -3,6 +3,7 @@ from datetime import datetime
 from location_check import Pull_ListPropertiesBlocks_RQ
 from property_check import Pull_ListPropertyAvailabilityCalendar_RQ
 from property_price import Pull_ListPropertyPrices_RQ
+from add_booking import Push_PutConfirmedReservationMulti_RQ
 from flask import Flask, request, jsonify, redirect
 import stripe
 
@@ -52,7 +53,41 @@ year = today.year
 # Use all property IDs from apartment_ids
 property_ids = list(apartment_ids.keys())
 
-# Update Property Prices File
-prices = Pull_ListPropertyPrices_RQ.get_prices_for_multiple_properties()
+dateFrom = {
+    "day": 28,
+    "month": 1,
+    "year": 2025
+}
+dateTo = {
+    "day": 31,
+    "month": 1,
+    "year": 2025
+}
 
-print(prices)
+print(Pull_ListPropertyPrices_RQ.calculate_ru_price(3070533,3,3))
+
+# Update Property Prices File
+reservation_with_comments = Push_PutConfirmedReservationMulti_RQ(
+    username,
+    password,
+    property_id=3070533,
+    date_from = datetime(day=dateFrom["day"], month=dateFrom["month"], year=dateFrom["year"]),
+    date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"]),
+    number_of_guests=4,
+    client_price=50.00,
+    ru_price=Pull_ListPropertyPrices_RQ.calculate_ru_price(3070533,3,4),
+    already_paid=996.00,
+    customer_name="Sultan",
+    customer_surname="Rasul",
+    customer_email="test.test@test.com",
+    customer_phone="+11 111 111 111",
+    customer_zip_code="00-000",
+    number_of_adults=2,
+    number_of_children=2,
+    children_ages=[12, 9],
+    comments="test comment"
+)
+
+response = requests.post(api_endpoint, data=reservation_with_comments.serialize_request(), headers={"Content-Type": "application/xml"})
+
+print(response.text)
