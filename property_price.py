@@ -95,16 +95,26 @@ class Pull_ListPropertyPrices_RQ:
             return None
         
     @staticmethod
-    def calculate_price(property_id, nights, guests):
+    def calculate_customer_price(property_id, nights, guests):
         price = Pull_ListPropertyPrices_RQ.get_prices_for_property(property_id=property_id)
         dailyPrice = float(price["price"]["Prices"]["Season"]["Price"])
         extra = float(price["price"]["Prices"]["Season"]["Extra"])
-        print(dailyPrice,extra)
         
         basePrice = (dailyPrice * int(nights)) + extra
         if (int(guests) > 2):
             basePrice += (int(guests)-2) * extra       
 
-        print(basePrice)
+        return basePrice
+    
+    @staticmethod
+    def calculate_ru_price(property_id, nights, guests):
+        price = Pull_ListPropertyPrices_RQ.get_prices_for_property(property_id=property_id)
+        dailyPrice = float(price["price"]["Prices"]["Season"]["Price"])
+        extra = float(price["price"]["Prices"]["Season"]["Extra"])
+        
+        basePrice = (dailyPrice * int(nights))
+        if (int(guests) > 2):
+            basePrice += (int(guests)-2) * extra * nights       
+
         return basePrice
 

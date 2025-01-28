@@ -1,5 +1,6 @@
 import requests
 from datetime import datetime
+from add_booking import Push_PutConfirmedReservationMulti_RQ
 from location_check import Pull_ListPropertiesBlocks_RQ
 from property_check import Pull_ListPropertyAvailabilityCalendar_RQ
 from property_price import Pull_ListPropertyPrices_RQ
@@ -49,7 +50,6 @@ def check_blocked_apartments():
     date_from = request.json['date_from']
     date_to = request.json['date_to']
 
-    print(date_from, date_to)
 
     props_request = Pull_ListPropertiesBlocks_RQ(
         username, password, location_id=7912,
@@ -95,8 +95,6 @@ def check_calendar():
     date_from = request.json['date_from']
     date_to = request.json['date_to']
     property_id = request.json['property_id']
-
-    print(date_from,date_to,property_id)
     
 
     # Check Availability Calendar
@@ -123,7 +121,6 @@ def create_checkout_session():
     childrenAges = request.json['childrenAges']
     apartment_number = apartment_ids[property_id].split()[-1]
     image = "https://rosedene.funkypanda.dev/"+str(apartment_number)+"/0.jpg"
-    print(image)
 
      # Check Availability Calendar
     avail_request = Pull_ListPropertyAvailabilityCalendar_RQ(
@@ -136,7 +133,6 @@ def create_checkout_session():
     calendar = avail_request.check_availability_calendar(response.text)
     
     for day in calendar:
-        print(day["IsBlocked"])
         if day["IsBlocked"] == "true":
             return jsonify({'error': 'This apartment is not available for these dates!'}), 420
     
@@ -148,7 +144,7 @@ def create_checkout_session():
     nights = (date_to_obj - date_from_obj).days
 
     # Get Price
-    price = Pull_ListPropertyPrices_RQ.calculate_price(property_id=property_id, nights=nights, guests=(adults+children))
+    customerPrice = Pull_ListPropertyPrices_RQ.calculate_customer_price(property_id=property_id, nights=nights, guests=(adults+children))
 
     displayDate = f'{date_from["day"]}/{date_from["month"]}/{date_from["year"]} - {date_to["day"]}/{date_to["month"]}/{date_to["year"]}'
     description = f"{displayDate} • {adults} Adult{'s' if adults > 1 else ''}"
@@ -168,7 +164,7 @@ def create_checkout_session():
                             "description": description,
                             "images": [image],
                         },
-                        "unit_amount_decimal": price * 100,
+                        "unit_amount_decimal": customerPrice * 100,
                     },
                     "quantity": 1,
                 },
@@ -195,7 +191,7 @@ def create_checkout_session():
                 "children": children,
                 "children_ages": ",".join(str(e) for e in childrenAges),
                 "nights": nights,
-                "price": price
+                "price": customerPrice
             },
         )
     except Exception as e:
@@ -208,6 +204,18 @@ def order_success():
     session_id = request.args.get('session_id')
     session = stripe.checkout.Session.retrieve(session_id)
 
+    payment_intent_id = session.get("payment_intent")
+    payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+
+    charge_intent_id = payment_intent.get("latest_charge")
+    charge_intent = stripe.Charge.retrieve(charge_intent_id)
+
+    balance_transaction_id = charge_intent.get("balance_transaction")
+    balance_transaction = stripe.BalanceTransaction.retrieve(balance_transaction_id)
+
+    fee = balance_transaction.get("fee")/100
+
+
     #  Customer Details
     name = session["customer_details"]["name"]
     email = session["customer_details"]["email"]
@@ -215,12 +223,12 @@ def order_success():
     postal_code = session["customer_details"]["address"]["postal_code"]
     country = session["customer_details"]["address"]["country"]
 
-    # Special Request
+    # Special Requestæ
     special_request = session.get("custom_fields", [{}])[0].get("text", {}).get("value", "") or ""
 
     meta_data = session["metadata"]
     adults = int(meta_data["adults"])
-    apartment_id = meta_data["apartment_id"]
+    apartment_id = int(meta_data["apartment_id"])
     apartment_name = meta_data["apartment_name"]
     children = int(meta_data["children"])
     childrenAges = []
@@ -229,27 +237,52 @@ def order_success():
     date_from = meta_data["date_from"]
     date_to = meta_data["date_to"]
     nights = int(meta_data["nights"])
+
+    dateFrom = {
+        "day": int(date_from.split("/")[0]),
+        "month": int(date_from.split("/")[1]),
+        "year": int(date_from.split("/")[2])
+    }
+    dateTo = {
+        "day": int(date_to.split("/")[0]),
+        "month": int(date_to.split("/")[1]),
+        "year": int(date_to.split("/")[2])
+    }
+
+
+    ruPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=apartment_id, nights=nights, guests=(adults+children))
+    customerPrice = Pull_ListPropertyPrices_RQ.calculate_customer_price(property_id=apartment_id, nights=nights, guests=(adults+children))
     
-    
-    print("Customer Details")
-    print(name)
-    print(email)
-    print(phone_number)
-    print(postal_code)
-    print(country)
+    booking_info = f"Booking Information:\nAdults: {adults}\nChildren: {children}"
+    if children > 0:
+        for i, age in enumerate(childrenAges, 1):
+            booking_info += f"\nChild {i}: {age} Years Old"
+    if special_request != "":
+        booking_info += f"\n\nSpecial Request:\n{special_request}"
 
-    print("Booking Information")
-    print(f"Adults: {adults}")
-    print(f"Children: {children}")
-    for i in range(len(childrenAges)):
-        print(f"Child {i+1} age: {childrenAges[i]}")
-    print(f"Date From: {date_from}")
-    print(f"Date To: {date_to}")
-    print(f"Nights: {nights}")
-
-
-
-    print(special_request)
+    reservation = Push_PutConfirmedReservationMulti_RQ(
+        username,
+        password,
+        property_id=apartment_id,
+        date_from = datetime(day=dateFrom["day"], month=dateFrom["month"], year=dateFrom["year"]),
+        date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"]),
+        number_of_guests= adults+children,
+        client_price=customerPrice,
+        ru_price=ruPrice,
+        already_paid=customerPrice,
+        customer_name=name,
+        customer_surname=" ",
+        customer_email=email,
+        customer_phone=phone_number,
+        customer_zip_code=postal_code,
+        number_of_adults=adults,
+        number_of_children=children,
+        children_ages=childrenAges,
+        comments=booking_info,
+        commission=f"{fee:.2f}"
+    )
+    response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
+    print(response)
 
     redirect_url = f'http://localhost:5173/?name={name}&email={email}'
 
