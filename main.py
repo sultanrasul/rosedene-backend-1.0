@@ -144,7 +144,7 @@ def create_checkout_session():
     nights = (date_to_obj - date_from_obj).days
 
     # Get Price
-    customerPrice = Pull_ListPropertyPrices_RQ.calculate_customer_price(property_id=property_id, nights=nights, guests=(adults+children))
+    customerPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, nights=nights, guests=(adults+children))
 
     displayDate = f'{date_from["day"]}/{date_from["month"]}/{date_from["year"]} - {date_to["day"]}/{date_to["month"]}/{date_to["year"]}'
     description = f"{displayDate} • {adults} Adult{'s' if adults > 1 else ''}"
@@ -193,6 +193,20 @@ def create_checkout_session():
                 "nights": nights,
                 "price": customerPrice
             },
+            payment_intent_data={  # Add this section
+                "description": f"Booking for {apartment_ids[property_id]} from {date_from['day']}/{date_from['month']}/{date_from['year']} to {date_to['day']}/{date_to['month']}/{date_to['year']} • {adults} Adult{'s' if adults > 1 else ''}" + (f" • {children} Child{'ren' if children != 1 else ''}" if children > 0 else ""),
+                "metadata": {
+                    "apartment_id": property_id,
+                    "apartment_name": apartment_ids[property_id],
+                    "date_from": f"{date_from['day']}/{date_from['month']}/{date_from['year']}",
+                    "date_to": f"{date_to['day']}/{date_to['month']}/{date_to['year']}",
+                    "adults": adults,
+                    "children": children,
+                    "children_ages": ",".join(str(e) for e in childrenAges),
+                    "nights": nights,
+                    "price": customerPrice
+                },
+            }
         )
     except Exception as e:
         return str(e)
@@ -259,6 +273,7 @@ def order_success():
             booking_info += f"\nChild {i}: {age} Years Old"
     if special_request != "":
         booking_info += f"\n\nSpecial Request:\n{special_request}"
+    booking_info+= f"\n\nStripes Payment ID: {payment_intent_id}"
 
     reservation = Push_PutConfirmedReservationMulti_RQ(
         username,
@@ -267,9 +282,9 @@ def order_success():
         date_from = datetime(day=dateFrom["day"], month=dateFrom["month"], year=dateFrom["year"]),
         date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"]),
         number_of_guests= adults+children,
-        client_price=customerPrice,
+        client_price=ruPrice,
         ru_price=ruPrice,
-        already_paid=customerPrice,
+        already_paid=ruPrice,
         customer_name=name,
         customer_surname=" ",
         customer_email=email,
@@ -282,9 +297,17 @@ def order_success():
         commission=f"{fee:.2f}"
     )
     response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
-    print(response)
-
-    redirect_url = f'http://localhost:5173/?name={name}&email={email}'
+    print(response.text)
+    booking_reference = reservation.booking_reference(response.text)
+   
+ # Include additional data in the redirect URL
+    redirect_url = (
+        f"http://localhost:5173/?"
+        f"name={name}&email={email}&phone_number={phone_number}&"
+        f"apartment_name={apartment_name}&amount={ruPrice}&ref_number={booking_reference}&"
+        f"check_in={date_from}&check_out={date_to}&adults={adults}&children={children}&"
+        f"children_ages={','.join(childrenAges)}&nights={nights}"
+    )
 
     return redirect(redirect_url)
 
