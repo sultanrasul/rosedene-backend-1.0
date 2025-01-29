@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 from typing import List, Optional
+import xmltodict
 
 class Push_PutConfirmedReservationMulti_RQ:
     def __init__(self, username, password, property_id, date_from, date_to, number_of_guests,ru_price, client_price,
@@ -76,3 +77,8 @@ class Push_PutConfirmedReservationMulti_RQ:
             ET.SubElement(reservation_elem, "Comments").text = self.comments
         
         return ET.tostring(root, encoding="unicode")
+    
+    def booking_reference(self, response_xml):
+        json_response = xmltodict.parse(response_xml)
+        calendar = json_response["Push_PutConfirmedReservationMulti_RS"]["ReservationID"]
+        return calendar
