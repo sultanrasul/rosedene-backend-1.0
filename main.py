@@ -204,7 +204,11 @@ def create_checkout_session():
                     "children": children,
                     "children_ages": ",".join(str(e) for e in childrenAges),
                     "nights": nights,
-                    "price": customerPrice
+                    "price": customerPrice,
+                    "name": "",
+                    "email": "",
+                    "phone_number": "",
+                    "booking_reference": ""
                 },
             }
         )
@@ -220,6 +224,7 @@ def order_success():
 
     payment_intent_id = session.get("payment_intent")
     payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+    current_meta_data_pi = payment_intent.metadata
 
     charge_intent_id = payment_intent.get("latest_charge")
     charge_intent = stripe.Charge.retrieve(charge_intent_id)
@@ -252,6 +257,7 @@ def order_success():
     date_to = meta_data["date_to"]
     nights = int(meta_data["nights"])
 
+    
     dateFrom = {
         "day": int(date_from.split("/")[0]),
         "month": int(date_from.split("/")[1]),
@@ -263,9 +269,7 @@ def order_success():
         "year": int(date_to.split("/")[2])
     }
 
-
     ruPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=apartment_id, nights=nights, guests=(adults+children))
-    customerPrice = Pull_ListPropertyPrices_RQ.calculate_customer_price(property_id=apartment_id, nights=nights, guests=(adults+children))
     
     booking_info = f"Booking Information:\nAdults: {adults}\nChildren: {children}"
     if children > 0:
@@ -275,6 +279,8 @@ def order_success():
         booking_info += f"\n\nSpecial Request:\n{special_request}"
     booking_info+= f"\n\nStripes Payment ID: {payment_intent_id}"
 
+    # Add Booking to Rentals United
+    
     reservation = Push_PutConfirmedReservationMulti_RQ(
         username,
         password,
@@ -299,8 +305,14 @@ def order_success():
     response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
     print(response.text)
     booking_reference = reservation.booking_reference(response.text)
+
+    current_meta_data_pi["booking_reference"] = booking_reference
+    current_meta_data_pi["name"] = name
+    current_meta_data_pi["email"] = email
+    current_meta_data_pi["phone_number"] = phone_number
+    payment_intent.modify(payment_intent_id,metadata=current_meta_data_pi)
    
- # Include additional data in the redirect URL
+    # Include additional data in the redirect URL
     redirect_url = (
         f"http://localhost:5173/?"
         f"name={name}&email={email}&phone_number={phone_number}&"
@@ -311,6 +323,25 @@ def order_success():
 
     return redirect(redirect_url)
 
+@app.route('/get_booking', methods=['POST'])
+def get_booking():
+    try:
+        payment_intent_id = request.json.get('receipt_id')
+
+        
+        # Attempt to retrieve the PaymentIntent
+        payment_intent = stripe.PaymentIntent.retrieve(f"pi_{payment_intent_id}", expand=["customer"])
+        
+        # Extract customer metadata
+        return jsonify({'metadata': payment_intent.metadata})
+
+    except stripe.error.InvalidRequestError:
+        # If the payment intent does not exist or is invalid
+        return jsonify({'error': 'Could not find order', 'code': 'ORDER_NOT_FOUND'}), 404
+
+    except Exception as e:
+        # Handle any other unexpected errors
+        return jsonify({'error': 'Something went wrong', 'code': 'SERVER_ERROR', 'details': str(e)}), 500
 
 if __name__ == '__main__':
     app.run()
