@@ -1,93 +1,120 @@
-import requests
-from datetime import datetime
-from location_check import Pull_ListPropertiesBlocks_RQ
-from property_check import Pull_ListPropertyAvailabilityCalendar_RQ
-from property_price import Pull_ListPropertyPrices_RQ
-from add_booking import Push_PutConfirmedReservationMulti_RQ
-from flask import Flask, request, jsonify, redirect
-import stripe
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
-# This is your test secret API key.
+# Your SendGrid SMTP credentials
+smtp_server = 'smtp.sendgrid.net'
+smtp_port = 587
+username = 'apikey'  # Use 'apikey' as the username
+password = "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"
 
-import os
-from dotenv import load_dotenv
-load_dotenv()
+# Email details
+from_email = 'booking@booking.funkypanda.dev'  # Your verified email address
+to_email = 'sultanrasul5+me@gmail.com'  # Recipient email address
+subject = 'Test Email'
+body = 'This is a test email sent via SendGrid SMTP using Python!'
 
-app = Flask(__name__)
+# Create the email message
+msg = MIMEMultipart()
+msg['From'] = from_email
+msg['To'] = to_email
+msg['Subject'] = subject
 
-stripe.api_key = os.getenv('sk')
+html_content = '''
+<div style="background-color: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); padding-top: 40px; padding-bottom: 30px; padding-left: 30px; padding-right: 30px; max-width: 600px; width: 100%; color: black; position: relative;">
+    
+    <!-- Payment Success Text -->
+    <h1 style="text-align: center; color: #2D3748; font-size: 24px; font-weight: 600;">Payment Success!</h1>
+    <p style="text-align: center; color: #6B7280; margin-top: 8px;">Your Reservation has been complete</p>
 
-@app.after_request
-def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-    return response
+    <!-- Payment Details -->
+    <div style="background-color: #F3F4F6; border-radius: 10px; padding: 24px; margin-top: 24px;">
+        <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+            <tr>
+                <td style="color: #6B7280; text-align: left;">Amount</td>
+                <td style="text-align: right; color: #2D3748; font-weight: 500; font-size: 18px;">£500.00</td>
+            </tr>
+            <tr>
+                <td style="color: #6B7280; text-align: left;">Ref Number</td>
+                <td style="text-align: right; color: #2D3748;">23452345</td>
+            </tr>
+            <tr>
+                <td style="color: #6B7280; text-align: left;">Apartment</td>
+                <td style="text-align: right; color: #2D3748;">Emperor Studio Apartment 3</td>
+            </tr>
+            <tr>
+                <td style="color: #6B7280; text-align: left;">Name</td>
+                <td style="text-align: right; color: #2D3748;">Sultan Rasul</td>
+            </tr>
+            <tr>
+                <td style="color: #6B7280; text-align: left;">Email</td>
+                <td style="text-align: right; color: #2D3748;">Sultan Rasul</td>
+            </tr>
+            <tr>
+                <td style="color: #6B7280; text-align: left;">Phone Number</td>
+                <td style="text-align: right; color: #2D3748;">07928468825</td>
+            </tr>
+        </table>
 
-YOUR_DOMAIN = 'http://localhost:4242'
+        <hr style="height: 1px; margin: 8px 0; background-color: #D1D5DB; border: none;">
 
-# Apartment IDs dictionary
-apartment_ids = {
-    3069140: 'Emperor Apartment 1',
-    3070529: 'Emperor Apartment 2',
-    3070534: 'Emperor Apartment 6',
-    3070536: 'Emperor Apartment 7',
-    3070531: 'King Studio Apartment 4',
-    3070533: 'King Studio Apartment 5',
-    3070540: 'King Studio Apartment 9',
-    3070538: 'The Cottage Apartment 10',
-    3070537: 'The Cottage Apartment 8',
-    3070530: 'Emperor Studio Apartment 3',
-}
+        <!-- Check-in and Check-out -->
+        <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+            <tr>
+                <td style="color: #6B7280; text-align: left;">Check-in</td>
+                <td style="text-align: left; color: #2D3748;">30/01/2025</td>
+                <td style="text-align: left; width: 20px; border-left: 1px solid #D1D5DB;"></td>
+                <td style="color: #6B7280; text-align: left;">Check-out</td>
+                <td style="text-align: right; color: #2D3748;">02/02/2025</td>
+            </tr>
+        </table>
 
-# API credentials and endpoints
-username = os.getenv('username')
-password = os.getenv('password')
-api_endpoint = "https://new.rentalsunited.com/api/handler.ashx"
+        <hr style="height: 1px; margin: 8px 0; background-color: #D1D5DB; border: none;">
 
-# Get today's date and extract year, month, day
-today = datetime.now()
-day = today.day
-month = today.month
-year = today.year
+        <!-- Adults, Children, Nights -->
+        <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+            <tr>
+                <td style="color: #6B7280; text-align: left;">Adults</td>
+                <td style="text-align: left; color: #2D3748;">2</td>
+                <td style="text-align: left; width: 20px; border-left: 1px solid #D1D5DB;"></td>
+                <td style="color: #6B7280; text-align: left;">Children</td>
+                <td style="text-align: left; color: #2D3748;">2</td>
+                <td style="text-align: left; width: 20px; border-left: 1px solid #D1D5DB;"></td>
+                <td style="color: #6B7280; text-align: left;">Nights</td>
+                <td style="text-align: right; color: #2D3748;">3</td>
+            </tr>
+        </table>
 
-# Use all property IDs from apartment_ids
-property_ids = list(apartment_ids.keys())
+        <hr style="height: 1px; margin: 8px 0; background-color: #D1D5DB; border: none;">
 
-dateFrom = {
-    "day": 28,
-    "month": 1,
-    "year": 2025
-}
-dateTo = {
-    "day": 31,
-    "month": 1,
-    "year": 2025
-}
+        <!-- Children Ages -->
+        <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+            <tr>
+                <td style="color: #6B7280; text-align: left;">Children Ages</td>
+                <td style="text-align: right; color: #2D3748;">1 and 2 Years Old</td>
+            </tr>
+        </table>
+    </div>
+</div>
 
-print(Pull_ListPropertyPrices_RQ.calculate_ru_price(3070533,3,3))
+'''
 
-# Update Property Prices File
-reservation_with_comments = Push_PutConfirmedReservationMulti_RQ(
-    username,
-    password,
-    property_id=3070533,
-    date_from = datetime(day=dateFrom["day"], month=dateFrom["month"], year=dateFrom["year"]),
-    date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"]),
-    number_of_guests=4,
-    client_price=50.00,
-    ru_price=Pull_ListPropertyPrices_RQ.calculate_ru_price(3070533,3,4),
-    already_paid=996.00,
-    customer_name="Sultan",
-    customer_surname="Rasul",
-    customer_email="test.test@test.com",
-    customer_phone="+11 111 111 111",
-    customer_zip_code="00-000",
-    number_of_adults=2,
-    number_of_children=2,
-    children_ages=[12, 9],
-    comments="test comment"
-)
+msg.attach(MIMEText(html_content, 'html'))
 
-response = requests.post(api_endpoint, data=reservation_with_comments.serialize_request(), headers={"Content-Type": "application/xml"})
 
-print(response.text)
+# Connect to the SendGrid SMTP server and send the email
+try:
+    # Establish a secure connection using TLS
+    server = smtplib.SMTP(smtp_server, smtp_port)
+    server.starttls()  # Encrypt the connection
+    server.login(username, password)  # Log in using your API key as the password
+
+    # Send the email
+    server.sendmail(from_email, to_email, msg.as_string())
+    print("Email sent successfully!")
+
+except Exception as e:
+    print(f"Failed to send email: {e}")
+
+finally:
+    server.quit()
