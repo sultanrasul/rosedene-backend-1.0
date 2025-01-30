@@ -194,7 +194,7 @@ def create_checkout_session():
                 "price": customerPrice
             },
             payment_intent_data={  # Add this section
-                "description": f"Booking for {apartment_ids[property_id]} from {date_from['day']}/{date_from['month']}/{date_from['year']} to {date_to['day']}/{date_to['month']}/{date_to['year']} • {adults} Adult{'s' if adults > 1 else ''}" + (f" • {children} Child{'ren' if children != 1 else ''}" if children > 0 else ""),
+                "description": "d",
                 "metadata": {
                     "apartment_id": property_id,
                     "apartment_name": apartment_ids[property_id],

@@ -80,5 +80,5 @@ class Push_PutConfirmedReservationMulti_RQ:
     
     def booking_reference(self, response_xml):
         json_response = xmltodict.parse(response_xml)
-        calendar = json_response["Push_PutConfirmedReservationMulti_RS"]["ReservationID"]
-        return calendar
+        booking_reference = json_response["Push_PutConfirmedReservationMulti_RS"]["ReservationID"]
+        return booking_reference
