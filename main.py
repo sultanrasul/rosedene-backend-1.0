@@ -122,6 +122,8 @@ def create_checkout_session():
     apartment_number = apartment_ids[property_id].split()[-1]
     image = "https://rosedene.funkypanda.dev/"+str(apartment_number)+"/0.jpg"
 
+    cancelURL = request.json["url"]
+
      # Check Availability Calendar
     avail_request = Pull_ListPropertyAvailabilityCalendar_RQ(
         username, password, property_id=property_id,
@@ -172,7 +174,7 @@ def create_checkout_session():
             mode='payment',
             phone_number_collection={"enabled": True},
             success_url="http://127.0.0.1:5000/success?session_id={CHECKOUT_SESSION_ID}",
-            cancel_url=YOUR_DOMAIN + '/cancel.html',
+            cancel_url=cancelURL,
             custom_fields=[
                 {
                     "key": "special_request",
@@ -210,6 +212,7 @@ def create_checkout_session():
                     "phone_number": "",
                     "booking_reference": ""
                 },
+                "capture_method": "manual",
             }
         )
     except Exception as e:
@@ -225,16 +228,7 @@ def order_success():
     payment_intent_id = session.get("payment_intent")
     payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
     current_meta_data_pi = payment_intent.metadata
-
-    charge_intent_id = payment_intent.get("latest_charge")
-    charge_intent = stripe.Charge.retrieve(charge_intent_id)
-
-    balance_transaction_id = charge_intent.get("balance_transaction")
-    balance_transaction = stripe.BalanceTransaction.retrieve(balance_transaction_id)
-
-    fee = balance_transaction.get("fee")/100
-
-
+    
     #  Customer Details
     name = session["customer_details"]["name"]
     email = session["customer_details"]["email"]
@@ -278,6 +272,7 @@ def order_success():
     if special_request != "":
         booking_info += f"\n\nSpecial Request:\n{special_request}"
     booking_info+= f"\n\nStripes Payment ID: {payment_intent_id}"
+    booking_info+= f"\n\nCountry: {country}"
 
     # Add Booking to Rentals United
     
@@ -300,13 +295,30 @@ def order_success():
         number_of_children=children,
         children_ages=childrenAges,
         comments=booking_info,
-        commission=f"{fee:.2f}"
+        commission=0
     )
     response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
-    print(response.text)
-    booking_reference = reservation.booking_reference(response.text)
+    
+    jsonResponse = reservation.booking_reference(response.text)
+    status = int(jsonResponse["Push_PutConfirmedReservationMulti_RS"]["Status"]["@ID"])
+    
+    if status !=0:
+        payment_intent.cancel()
+        print(jsonResponse["Push_PutConfirmedReservationMulti_RS"]["Status"]["#text"])
+        error = jsonResponse["Push_PutConfirmedReservationMulti_RS"]["Status"]["#text"]
+        redirect_url = (
+            f"http://localhost:5173/details?"
+            f"name={name}&email={email}&phone_number={phone_number}&"
+            f"apartment_name={apartment_name}&price={ruPrice}&"
+            f"date_from={date_from}&date_to={date_to}&adults={adults}&children={children}&"
+            f"children_ages={','.join(childrenAges)}&nights={nights}&error={error}&errorCode={status}"
+        )
+        return redirect(redirect_url)
 
-    current_meta_data_pi["booking_reference"] = booking_reference
+    payment_intent.capture(payment_intent_id)
+
+
+    current_meta_data_pi["booking_reference"] = jsonResponse["Push_PutConfirmedReservationMulti_RS"]["ReservationID"]
     current_meta_data_pi["name"] = name
     current_meta_data_pi["email"] = email
     current_meta_data_pi["phone_number"] = phone_number
@@ -316,7 +328,7 @@ def order_success():
     redirect_url = (
         f"http://localhost:5173/?"
         f"name={name}&email={email}&phone_number={phone_number}&"
-        f"apartment_name={apartment_name}&amount={ruPrice}&ref_number={booking_reference}&"
+        f"apartment_name={apartment_name}&price={ruPrice}&ref_number={jsonResponse['Push_PutConfirmedReservationMulti_RS']['ReservationID']}&"
         f"check_in={date_from}&check_out={date_to}&adults={adults}&children={children}&"
         f"children_ages={','.join(childrenAges)}&nights={nights}"
     )

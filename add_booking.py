@@ -80,5 +80,5 @@ class Push_PutConfirmedReservationMulti_RQ:
     
     def booking_reference(self, response_xml):
         json_response = xmltodict.parse(response_xml)
-        booking_reference = json_response["Push_PutConfirmedReservationMulti_RS"]["ReservationID"]
+        booking_reference = json_response
         return booking_reference
