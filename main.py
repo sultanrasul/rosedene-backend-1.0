@@ -1,6 +1,7 @@
 import requests
 from datetime import datetime
 from add_booking import Push_PutConfirmedReservationMulti_RQ
+from get_booking import Pull_GetReservationByID_RQ
 from location_check import Pull_ListPropertiesBlocks_RQ
 from property_check import Pull_ListPropertyAvailabilityCalendar_RQ
 from property_price import Pull_ListPropertyPrices_RQ
@@ -65,12 +66,12 @@ def check_blocked_apartments():
 
     # Merge prices into available properties
     price_map = {
-            price_data['property_id']: {
-                'price': price_data['price']['Prices']['Season']['Price'],
-                'extra': price_data['price']['Prices']['Season']['Extra']
-            }
-            for price_data in prices
+        price_data['property_id']: {
+            'price': price_data['price']['Prices'].get('Season', {}).get('Price', None),
+            'extra': price_data['price']['Prices'].get('Season', {}).get('Extra', None)
         }
+        for price_data in prices
+    }
 
     for apartment in properties['available']:
         apartment['price'] = price_map.get(apartment['id'], 'N/A')  # Default to 'N/A' if no price is found
@@ -180,7 +181,6 @@ def create_checkout_session():
                     "key": "special_request",
                     "label": {"type": "custom", "custom": "Special Requests"},
                     "type": "text",
-                    # 'text': {'default_value': "Enter Your Message Here..."},
                     'optional': True,
                 }
             ],
@@ -304,7 +304,6 @@ def order_success():
     
     if status !=0:
         payment_intent.cancel()
-        print(jsonResponse["Push_PutConfirmedReservationMulti_RS"]["Status"]["#text"])
         error = jsonResponse["Push_PutConfirmedReservationMulti_RS"]["Status"]["#text"]
         redirect_url = (
             f"http://localhost:5173/details?"
@@ -315,7 +314,7 @@ def order_success():
         )
         return redirect(redirect_url)
 
-    payment_intent.capture(payment_intent_id)
+    payment_intent.capture()
 
 
     current_meta_data_pi["booking_reference"] = jsonResponse["Push_PutConfirmedReservationMulti_RS"]["ReservationID"]
@@ -326,7 +325,7 @@ def order_success():
    
     # Include additional data in the redirect URL
     redirect_url = (
-        f"http://localhost:5173/?"
+        f"http://localhost:5173/details?"
         f"name={name}&email={email}&phone_number={phone_number}&"
         f"apartment_name={apartment_name}&price={ruPrice}&ref_number={jsonResponse['Push_PutConfirmedReservationMulti_RS']['ReservationID']}&"
         f"check_in={date_from}&check_out={date_to}&adults={adults}&children={children}&"
@@ -337,23 +336,28 @@ def order_success():
 
 @app.route('/get_booking', methods=['POST'])
 def get_booking():
-    try:
-        payment_intent_id = request.json.get('receipt_id')
+    booking_ref = request.json.get('booking_ref')
+    reservation = Pull_GetReservationByID_RQ(username, password, booking_ref)
 
-        
-        # Attempt to retrieve the PaymentIntent
-        payment_intent = stripe.PaymentIntent.retrieve(f"pi_{payment_intent_id}", expand=["customer"])
-        
-        # Extract customer metadata
-        return jsonify({'metadata': payment_intent.metadata})
+    response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
+    jsonResponse = reservation.get_details(response.text)
+    
+    reservation_data = {
+        "ReservationID": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["ReservationID"],
+        "Apartment": apartment_ids.get(int(jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("PropertyID", -1)), "Unknown Apartment"),
+        "DateFrom": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("DateFrom"),
+        "DateTo": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("DateTo"),
+        "ClientPrice": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("Costs", {}).get("ClientPrice")
+    }
 
-    except stripe.error.InvalidRequestError:
-        # If the payment intent does not exist or is invalid
-        return jsonify({'error': 'Could not find order', 'code': 'ORDER_NOT_FOUND'}), 404
+    # Add optional fields only if they exist
+    if "CustomerInfo" in jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]:
+        reservation_data["CustomerInfo"] = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["CustomerInfo"]
 
-    except Exception as e:
-        # Handle any other unexpected errors
-        return jsonify({'error': 'Something went wrong', 'code': 'SERVER_ERROR', 'details': str(e)}), 500
+    if "GuestDetailsInfo" in jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]:
+        reservation_data["GuestDetailsInfo"] = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["GuestDetailsInfo"]
+
+    return jsonify({'reservation_data': reservation_data})
 
 if __name__ == '__main__':
     app.run()
