@@ -64,17 +64,16 @@ def check_blocked_apartments():
     # Fetch prices for available apartments
     prices = Pull_ListPropertyPrices_RQ.get_all_prices()
 
-    # Merge prices into available properties
-    price_map = {
-        price_data['property_id']: {
-            'price': price_data['price']['Prices'].get('Season', {}).get('Price', None),
-            'extra': price_data['price']['Prices'].get('Season', {}).get('Extra', None)
-        }
-        for price_data in prices
-    }
 
+
+
+    # Now add the prices to each apartment and include the overlap logic
     for apartment in properties['available']:
-        apartment['price'] = price_map.get(apartment['id'], 'N/A')  # Default to 'N/A' if no price is found
+        apartment_prices = prices[str(apartment['id'])]
+        if apartment_prices['Prices']:
+            apartment['Prices'] = apartment_prices['Prices']  # Add the list of prices for this apartment
+        else:
+            apartment['Prices'] = 'N/A'  # Default to 'N/A' if no price is found
 
     return jsonify({'properties': properties})
 
@@ -85,8 +84,8 @@ def check_price():
     property_id = request.json['property_id']
 
     # Check Apartment Price
-
-    prices = Pull_ListPropertyPrices_RQ.get_prices_for_property(property_id=property_id)
+    
+    prices = Pull_ListPropertyPrices_RQ.get_all_prices()[str(property_id)]
 
     return prices
 
@@ -124,12 +123,14 @@ def create_checkout_session():
     image = "https://rosedene.funkypanda.dev/"+str(apartment_number)+"/0.jpg"
 
     cancelURL = request.json["url"]
+    date_from_obj = datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"])
+    date_to_obj = datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
 
      # Check Availability Calendar
     avail_request = Pull_ListPropertyAvailabilityCalendar_RQ(
         username, password, property_id=property_id,
-        date_from=datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"]), 
-        date_to=datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
+        date_from=date_from_obj, 
+        date_to=date_to_obj
     )
 
     response = requests.post(api_endpoint, data=avail_request.serialize_request(), headers={"Content-Type": "application/xml"})
@@ -142,12 +143,15 @@ def create_checkout_session():
     
 
     # Calculate the number of nights
-    date_from_obj = datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"])
-    date_to_obj = datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
     nights = (date_to_obj - date_from_obj).days
 
     # Get Price
-    customerPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, nights=nights, guests=(adults+children))
+    customerPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, guests=(adults+children),
+        date_from=date_from_obj, 
+        date_to=date_to_obj
+    )
+    if customerPrice == 0:
+        return jsonify({'error': 'This apartment is not available for these dates!'}), 420
 
     displayDate = f'{date_from["day"]}/{date_from["month"]}/{date_from["year"]} - {date_to["day"]}/{date_to["month"]}/{date_to["year"]}'
     description = f"{displayDate} • {adults} Adult{'s' if adults > 1 else ''}"
@@ -263,7 +267,10 @@ def order_success():
         "year": int(date_to.split("/")[2])
     }
 
-    ruPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=apartment_id, nights=nights, guests=(adults+children))
+    ruPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=apartment_id, guests=(adults+children),
+        date_from = datetime(day=dateFrom["day"], month=dateFrom["month"], year=dateFrom["year"]),
+        date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"])
+    )
     
     booking_info = f"Booking Information:\nAdults: {adults}\nChildren: {children}"
     if children > 0:
@@ -324,13 +331,7 @@ def order_success():
     payment_intent.modify(payment_intent_id,metadata=current_meta_data_pi)
    
     # Include additional data in the redirect URL
-    redirect_url = (
-        f"http://localhost:5173/details?"
-        f"name={name}&email={email}&phone_number={phone_number}&"
-        f"apartment_name={apartment_name}&price={ruPrice}&ref_number={jsonResponse['Push_PutConfirmedReservationMulti_RS']['ReservationID']}&"
-        f"check_in={date_from}&check_out={date_to}&adults={adults}&children={children}&"
-        f"children_ages={','.join(childrenAges)}&nights={nights}"
-    )
+    redirect_url = (f"http://localhost:5173/details?ref_number={jsonResponse['Push_PutConfirmedReservationMulti_RS']['ReservationID']}")
 
     return redirect(redirect_url)
 

@@ -3,7 +3,7 @@ import xmltodict
 import requests
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class Pull_ListPropertyPrices_RQ:
@@ -31,10 +31,8 @@ class Pull_ListPropertyPrices_RQ:
         return price
 
     @staticmethod
-    def get_prices_for_multiple_properties_save_to_file(
-        username, password, property_ids, date_from, date_to, api_endpoint, file_path="property_prices.json"
-    ):
-        prices = []
+    def get_prices_for_multiple_properties_save_to_file(username, password, property_ids, date_from, date_to, api_endpoint, file_path="property_prices.json"):
+        prices_dict = {}
 
         for property_id in property_ids:
             request = Pull_ListPropertyPrices_RQ(username, password, property_id, date_from, date_to, api_endpoint)
@@ -47,16 +45,17 @@ class Pull_ListPropertyPrices_RQ:
                 # Process the XML response
                 response_xml = response.text
                 price = request.get_price(response_xml)
-                prices.append({"property_id": property_id, "price": price})
+                prices_dict[property_id] = price  # Store price with property_id as the key
             else:
                 print(f"Error fetching price for property {property_id}: {response.status_code}")
 
         # Save the data to a file
         with open(file_path, "w") as file:
-            json.dump(prices, file, indent=4)
+            json.dump(prices_dict, file, indent=4)
 
         print(f"Prices successfully saved to {file_path}")
-        return prices
+        return prices_dict
+
 
     @staticmethod
     def get_all_prices(file_path="property_prices.json"):
@@ -64,57 +63,56 @@ class Pull_ListPropertyPrices_RQ:
         if os.path.exists(file_path):
             with open(file_path, "r") as file:
                 saved_prices = json.load(file)
+
             return saved_prices
         else:
             print(f"No saved prices found in {file_path}. Please call 'get_prices_for_multiple_properties_save_to_file' first.")
             return []
-        
-    @staticmethod
-    def get_prices_for_property(property_id, file_path="property_prices.json"):
-        """
-        Get price data for a specific property ID from a JSON file.
     
-        :param property_id: The ID of the property to fetch prices for.
-        :param file_path: The path to the JSON file containing property prices.
-        :return: The price data for the given property ID, or None if not found.
-        """
-        # Check if the file exists
-        if os.path.exists(file_path):
-            with open(file_path, "r") as file:
-                saved_prices = json.load(file)
-            
-            # Find the property with the matching ID
-            property_data = next((p for p in saved_prices if p.get("property_id") == property_id), None)
-            if property_data:
-                return property_data
-            else:
-                print(f"No data found for property ID: {property_id}.")
-                return None
-        else:
-            print(f"No saved prices found in {file_path}. Please call 'get_prices_for_multiple_properties_save_to_file' first.")
+    # @staticmethod
+    # def calculate_ru_price(property_id, nights, guests):
+    #     price = Pull_ListPropertyPrices_RQ.get_all_prices()[str(property_id)]
+    #     dailyPrice = float(price["price"]["Prices"]["Season"]["Price"])
+    #     extra = float(price["price"]["Prices"]["Season"]["Extra"])
+        
+    #     basePrice = (dailyPrice * int(nights))
+    #     if (int(guests) > 2):
+    #         basePrice += (int(guests)-2) * extra * nights       
+
+    #     return basePrice
+
+    @staticmethod
+    def calculate_ru_price(property_id, guests, date_from, date_to):
+        saved_prices = Pull_ListPropertyPrices_RQ.get_all_prices()
+        
+        property_data = saved_prices[str(property_id)]
+        prices_info = property_data["Prices"]
+
+        if "Season" not in prices_info:
+            print(f"No seasonal pricing available for property ID {str(property_id)}.")
             return None
         
-    @staticmethod
-    def calculate_customer_price(property_id, nights, guests):
-        price = Pull_ListPropertyPrices_RQ.get_prices_for_property(property_id=property_id)
-        dailyPrice = float(price["price"]["Prices"]["Season"]["Price"])
-        extra = float(price["price"]["Prices"]["Season"]["Extra"])
-        
-        basePrice = (dailyPrice * int(nights)) + extra
-        if (int(guests) > 2):
-            basePrice += (int(guests)-2) * extra       
+        if not isinstance(prices_info["Season"], list):
+                prices_info["Season"] = [prices_info["Season"]]
 
-        return basePrice
-    
-    @staticmethod
-    def calculate_ru_price(property_id, nights, guests):
-        price = Pull_ListPropertyPrices_RQ.get_prices_for_property(property_id=property_id)
-        dailyPrice = float(price["price"]["Prices"]["Season"]["Price"])
-        extra = float(price["price"]["Prices"]["Season"]["Extra"])
-        
-        basePrice = (dailyPrice * int(nights))
-        if (int(guests) > 2):
-            basePrice += (int(guests)-2) * extra * nights       
+        total_price = 0
+        current_date = date_from
 
-        return basePrice
+        # Iterate over each night in the stay
+        while current_date < date_to:
+            for season in prices_info["Season"]:
+                season_start = datetime.strptime(season["@DateFrom"], "%Y-%m-%d")
+                season_end = datetime.strptime(season["@DateTo"], "%Y-%m-%d")
+
+                # If the current night falls within a season range, add its price
+                if season_start <= current_date <= season_end:
+                    total_price += float(season["Price"])
+                    if (guests > 2):
+                        total_price += float(season["Extra"]) * (guests - 2)
+                    
+                    break  # No need to check other seasons for the same night
+            
+            current_date += timedelta(days=1)  # Move to next night
+
+        return total_price
 
