@@ -1,5 +1,6 @@
 import requests
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from add_booking import Push_PutConfirmedReservationMulti_RQ
 from get_booking import Pull_GetReservationByID_RQ
 from location_check import Pull_ListPropertiesBlocks_RQ
@@ -92,16 +93,16 @@ def check_price():
 @app.route('/check_calendar', methods=['POST'])
 def check_calendar():
 
-    date_from = request.json['date_from']
-    date_to = request.json['date_to']
     property_id = request.json['property_id']
-    
+    date_from = datetime.today()
+    date_to = date_from + relativedelta(years=3)
+
 
     # Check Availability Calendar
     avail_request = Pull_ListPropertyAvailabilityCalendar_RQ(
         username, password, property_id=property_id,
-        date_from=datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"]), 
-        date_to=datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
+        date_from=date_from, 
+        date_to=date_to
     )
 
     response = requests.post(api_endpoint, data=avail_request.serialize_request(), headers={"Content-Type": "application/xml"})
