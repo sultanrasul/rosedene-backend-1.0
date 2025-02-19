@@ -4,7 +4,7 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "3ef69cc1df0c4f9982aacffbf970a859",
+        "ResponseID": "fa0219682f1f4d3ab28f7a0665322c77",
         "Prices": {
             "@PropertyID": "3069140",
             "FSPSeasons": null
@@ -15,7 +15,7 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "ac03602a4fd140f086d1d3ea3baf348f",
+        "ResponseID": "0319b353de8140cebcfcc3d5bc017519",
         "Prices": {
             "@PropertyID": "3070529",
             "FSPSeasons": null
@@ -26,7 +26,7 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "da08682fb5794c79b54581b0a941ba46",
+        "ResponseID": "df8d2c3ff3ac4a9594adc72a560eea11",
         "Prices": {
             "@PropertyID": "3070534",
             "FSPSeasons": null
@@ -37,29 +37,9 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "686b0a7d358e41b799a6196095c9e392",
+        "ResponseID": "16d6a2d1479e41c291def9b52cf4ce68",
         "Prices": {
             "@PropertyID": "3070536",
-            "Season": [
-                {
-                    "@DateFrom": "2025-02-09",
-                    "@DateTo": "2025-02-09",
-                    "Price": "750.0000",
-                    "Extra": "120.0000"
-                },
-                {
-                    "@DateFrom": "2025-02-10",
-                    "@DateTo": "2025-02-12",
-                    "Price": "1036.0000",
-                    "Extra": "120.0000"
-                },
-                {
-                    "@DateFrom": "2025-02-13",
-                    "@DateTo": "2025-02-14",
-                    "Price": "750.0000",
-                    "Extra": "120.0000"
-                }
-            ],
             "FSPSeasons": null
         }
     },
@@ -68,7 +48,7 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "198c1d51ebd446b4bf190124743d6b18",
+        "ResponseID": "6112cc7f7cc34dbdb1716040bc97e6d0",
         "Prices": {
             "@PropertyID": "3070531",
             "FSPSeasons": null
@@ -79,7 +59,7 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "8d108220fded45538bcf32eabb2a6314",
+        "ResponseID": "fa8a701d7b2344eab9d7f6eb33ec3054",
         "Prices": {
             "@PropertyID": "3070533",
             "FSPSeasons": null
@@ -90,9 +70,15 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "0ab45aecc49340158f5224e16d7d2086",
+        "ResponseID": "8bbfcf0af7da4381a496c86eddf7264b",
         "Prices": {
             "@PropertyID": "3070540",
+            "Season": {
+                "@DateFrom": "2025-02-17",
+                "@DateTo": "2025-02-23",
+                "Price": "1000.0000",
+                "Extra": "200.0000"
+            },
             "FSPSeasons": null
         }
     },
@@ -101,14 +87,14 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "d44772a686f44a839322c84c069a9d02",
+        "ResponseID": "69bbf0ad55c048e0bc1bfb677b0af120",
         "Prices": {
             "@PropertyID": "3070538",
             "Season": {
-                "@DateFrom": "2025-02-09",
-                "@DateTo": "2025-02-14",
-                "Price": "1036.0000",
-                "Extra": "120.0000"
+                "@DateFrom": "2025-02-17",
+                "@DateTo": "2025-02-23",
+                "Price": "1200.0000",
+                "Extra": "200.0000"
             },
             "FSPSeasons": null
         }
@@ -118,7 +104,7 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "a1c13780e7474fde8a4b15fb759bbcfb",
+        "ResponseID": "f065ee3f7d8c4d72ae0bd7ea8d4de9a9",
         "Prices": {
             "@PropertyID": "3070537",
             "FSPSeasons": null
@@ -129,7 +115,7 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "50b5b56cb64b4178b48aa3daab13d072",
+        "ResponseID": "8b37b92ec2af4453aa9a8ca48b84b903",
         "Prices": {
             "@PropertyID": "3070530",
             "FSPSeasons": null
