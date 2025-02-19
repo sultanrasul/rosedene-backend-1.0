@@ -8,6 +8,7 @@ from property_check import Pull_ListPropertyAvailabilityCalendar_RQ
 from property_price import Pull_ListPropertyPrices_RQ
 from flask import Flask, request, jsonify, redirect
 import stripe
+import time
 
 # This is your test secret API key.
 
@@ -19,13 +20,15 @@ app = Flask(__name__)
 
 stripe.api_key = os.getenv('sk')
 
+
 @app.after_request
 def add_cors_headers(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
     return response
 
-YOUR_DOMAIN = 'http://localhost:4242'
+FRONTEND_URL = 'http://192.168.178.66:5173'
+BACKEND_URL =  'http://192.168.178.66:5000'
 
 # Apartment IDs dictionary
 apartment_ids = {
@@ -87,6 +90,7 @@ def check_price():
     # Check Apartment Price
     
     prices = Pull_ListPropertyPrices_RQ.get_all_prices()[str(property_id)]
+
 
     return prices
 
@@ -179,7 +183,7 @@ def create_checkout_session():
             ],
             mode='payment',
             phone_number_collection={"enabled": True},
-            success_url="http://127.0.0.1:5000/success?session_id={CHECKOUT_SESSION_ID}",
+            success_url=BACKEND_URL+"/success?session_id={CHECKOUT_SESSION_ID}",
             cancel_url=cancelURL,
             custom_fields=[
                 {
@@ -314,7 +318,7 @@ def order_success():
         payment_intent.cancel()
         error = jsonResponse["Push_PutConfirmedReservationMulti_RS"]["Status"]["#text"]
         redirect_url = (
-            f"http://localhost:5173/details?"
+            f"{FRONTEND_URL}/details?"
             f"name={name}&email={email}&phone_number={phone_number}&"
             f"apartment_name={apartment_name}&price={ruPrice}&"
             f"date_from={date_from}&date_to={date_to}&adults={adults}&children={children}&"
@@ -332,7 +336,7 @@ def order_success():
     payment_intent.modify(payment_intent_id,metadata=current_meta_data_pi)
    
     # Include additional data in the redirect URL
-    redirect_url = (f"http://localhost:5173/details?ref_number={jsonResponse['Push_PutConfirmedReservationMulti_RS']['ReservationID']}")
+    redirect_url = (f"{FRONTEND_URL}/details?ref_number={jsonResponse['Push_PutConfirmedReservationMulti_RS']['ReservationID']}")
 
     return redirect(redirect_url)
 
@@ -362,4 +366,4 @@ def get_booking():
     return jsonify({'reservation_data': reservation_data})
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host="192.168.178.66",port=5000)
