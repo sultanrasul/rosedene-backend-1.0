@@ -1,141 +1,240 @@
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+# using SendGrid's Python Library
+# https://github.com/sendgrid/sendgrid-python
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
-# Your SendGrid SMTP credentials
-smtp_server = 'smtp.sendgrid.net'
-smtp_port = 587
-username = 'apikey'  # Use 'apikey' as the username
-password = "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"
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-# Email details
-from_email = 'booking@booking.funkypanda.dev'  # Your verified email address
-to_email = 'sultanrasul5+me@gmail.com'  # Recipient email address
-subject = 'Test Email'
-body = 'This is a test email sent via SendGrid SMTP using Python!'
 
-# Create the email message
-msg = MIMEMultipart()
-msg['From'] = from_email
-msg['To'] = to_email
-msg['Subject'] = subject
+message = Mail(
+    from_email='booking@rosedenedirect.com',
+    to_emails='sultanrasul5@gmail.com',
+    subject=f'Confirmation of your reservation: Rosedene Highland House No.143065566',
+    html_content='''
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        * {
+            font-family: "Calibri", sans-serif;
+        }
+        /* Reset styles for email clients */
+        .main-table { width: 100% !important; max-width: 600px !important; margin: 0 auto !important; }
+        img { border: 0; line-height: 100%; max-width: 100% !important; }
+        .mobile-stack { display: block !important; width: 100% !important; }
+        .separator { border-left: 1px solid #cccccc; height: 40px; }
+        .data-row { padding: 12px 0; border-top: 1px solid #e2e8f0; }
+        
+        @media screen and (max-width: 600px) {
+            .main-table, .mobile-stack { width: 100% !important; }
+            td.mobile-stack { display: block !important; width: 100% !important; }
+            .desktop-hide { display: none !important; }
+            .mobile-center { text-align: center !important; }
+            .mobile-pad { padding: 10px !important; }
+            .mobile-text { font-size: 14px !important; }
+            .mobile-header { font-size: 20px !important; }
+            img { height: auto !important; max-height: 300px !important; }
+        }
+    </style>
+    </head>
+    <body style="margin:0; padding:20px 0; background:#f5f5f5;">
 
-html_content = '''
-<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" align="center">
-    <tr>
-        <td align="center">
-            <div style="background-color: #e0e0e0; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); padding: 40px 10px 10px 10px; max-width: 600px; width: 100%; color: black; text-align: center;">
-                
-                <!-- Success Icon -->
-                <table align="center" role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 20px;">
+    <!-- Wrapper Table -->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td align="center">
+                <!-- Main Container -->
+                <table class="main-table" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+                    <!-- Email Details Section -->
                     <tr>
-                        <td align="center" style="padding: 16px; border-radius: 50%; background-color: rgba(34, 197, 94, 0.8); box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);">
-                            <table align="center" role="presentation" cellspacing="0" cellpadding="0" border="0">
+                        <td style="padding:10px; text-align:center;">
+                            <p style="color:#2d3748; font-size:12px; margin:8px 0 30px;text-align:center;">
+                                IMPORTANT: This confirmation email has been generated automatically, so please do not reply to this address. To view or cancel your reservation, please go to the "Find Details" section of our website and quote the confirmation or reservation number shown in this email.
+                            </p>
+                            <img src="https://rosedenedirect.com/logo.png" alt="Rosedene Logo" style="width:90%; max-width:200px; margin:0 auto 30px; display:block;">
+                            
+                            <!-- Email Content -->
+                            <table width="100%" style="border:1px solid #e2e8f0; border-radius:12px; background:#ffffff; padding:20px; text-align:left;margin-bottom:90px;">
                                 <tr>
-                                    <td align="center" style="width: 40px; height: 40px; border-radius: 50%; background-color: #4CAF50;">
-                                        <img src="https://img.icons8.com/m_outlined/512/FFFFFF/checked.png" width="30" height="30" alt="Success Icon">
+                                    <td>
+                                        <p>
+                                            Dear Mr Rasul,
+                                        </p>
+                                        <p>
+                                            Thank you for choosing 
+                                            <span style="color:#C09A5B;font-weight:bold;">Rosedene Highland House</span>
+                                            for your next stay in 
+                                            <span style="color:#C09A5B;font-weight:bold;">Inverness</span>.
+                                        </p>
+                                        <p>
+                                            Please see below for details of your reservation.
+                                        </p>
+                                        <p>
+                                            We hope you enjoy your stay!
+                                        </p>
+                                        <p>
+                                            Kind regards,<br>
+                                            ALL – Accor Live Limitless Customer Service
+                                        </p>
                                     </td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
+
+                    <!-- Green Checkmark Section -->
+                    <tr>
+                        <td style="padding:10px; text-align:center;">
+                            <table width="100%" style="margin:-0px auto 0;">
+                                <tr>
+                                    <td align="center">
+                                        <div style="width:80px; height:80px; background:#ffffff; border-radius:50%;">
+                                            <img src="https://cdn-icons-png.flaticon.com/512/5610/5610944.png" alt="Payment Successful" style="width:100%; height:auto; display:block;">
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Booking Details Section -->
+                    <tr>
+                        <td style="padding:10px; border-radius:12px;">
+                            <table width="100%">
+                                <tr>
+                                    <td style="text-align:center; padding-bottom:20px;">
+                                        <h1 style="color:#C09A5B; font-size:32px; margin:0;padding-top:0px;">
+                                            Payment Successful!
+                                        </h1>
+                                        <p style="color:#666666; font-size:16px; margin:8px 0 0;">
+                                            Your reservation is confirmed
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Details Card -->
+                            <table width="100%" style="background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0; padding:20px;">
+                                <!-- Total Amount -->
+                                <tr>
+                                    <td style="padding-bottom:15px;">
+                                        <table width="100%">
+                                            <tr>
+                                                <td style="color:#64748b; font-weight:500;">Total Amount</td>
+                                                <td style="text-align:right; color:#1e293b; font-size:24px; font-weight:700;">£3600.00</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+
+                                <!-- Reference Number -->
+                                <tr><td class="data-row">
+                                    <table width="100%">
+                                        <tr>
+                                            <td style="color:#64748b;">Reference Number</td>
+                                            <td style="text-align:right; color:#1e293b;">143065566</td>
+                                        </tr>
+                                    </table>
+                                </td></tr>
+
+                                <!-- Apartment -->
+                                <tr><td class="data-row">
+                                    <table width="100%">
+                                        <tr>
+                                            <td style="color:#64748b;">Apartment</td>
+                                            <td style="text-align:right; color:#1e293b;">The Cottage Apartment 10</td>
+                                        </tr>
+                                    </table>
+                                </td></tr>
+
+                                <!-- Guest Info -->
+                                <tr><td class="data-row">
+                                    <table width="100%">
+                                        <tr>
+                                            <td style="color:#64748b;">Guest Name</td>
+                                            <td style="text-align:right; color:#1e293b;">Sob</td>
+                                        </tr>
+                                        <tr><td colspan="2" style="padding-top:8px;"></td></tr>
+                                        <tr>
+                                            <td style="color:#64748b;">Email</td>
+                                            <td style="text-align:right; color:#1e293b;">pukkapukka@hotmail.co.uk</td>
+                                        </tr>
+                                        <tr><td colspan="2" style="padding-top:8px;"></td></tr>
+                                        <tr>
+                                            <td style="color:#64748b;">Phone</td>
+                                            <td style="text-align:right; color:#1e293b;">+447590235763</td>
+                                        </tr>
+                                    </table>
+                                </td></tr>
+
+                                <!-- Dates -->
+                                <tr><td class="data-row">
+                                    <table width="100%">
+                                        <tr>
+                                            <td style="width:50%;">
+                                                <div style="color:#64748b;">Check-in</div>
+                                                <div style="color:#1e293b; font-weight:500;">17/02/2025</div>
+                                            </td>
+                                            <td style="width:0%; text-align:center;">
+                                                <div class="separator"></div>
+                                            </td>
+                                            <td style="width:50%;text-align: right;">
+                                                <div style="color:#64748b;">Check-out</div>
+                                                <div style="color:#1e293b; font-weight:500;">20/02/2025</div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td></tr>
+
+                                <!-- Guest Details -->
+                                <tr><td class="data-row">
+                                        <table width="100%">
+                                            <tr>
+                                                <td style="width:33%; text-align: left;">
+                                                    <div style="color:#64748b;">Adults</div>
+                                                    <div style="color:#1e293b; font-weight:500;">2</div>
+                                                </td>
+                                                <td style="width:33%; text-align: center;">
+                                                    <div style="color:#64748b;">Children</div>
+                                                    <div style="color:#1e293b; font-weight:500;">2</div>
+                                                </td>
+                                                <td style="width:33%; text-align: right;">
+                                                    <div style="color:#64748b;">Nights</div>
+                                                    <div style="color:#1e293b; font-weight:500;">3</div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td></tr>
+                                
+                                <!-- Children Ages -->
+                                <tr>
+                                    <td>
+                                        <table width="100%">
+                                            <tr>
+                                                <td style="color:#64748b;">Children Ages</td>
+                                                <td style="text-align:right; color:#1e293b;">1, 2 Year Old</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                    
+                            </table>
+                        </td>
+                    </tr>
                 </table>
-                
-                <!-- Payment Success Text -->
-                <h1 style="color: #2D3748; font-size: 24px; font-weight: 600;">Payment Success!</h1>
-                <p style="color: #6B7280; margin-top: 8px;">Your Reservation has been completed</p>
-
-                <!-- Payment Details -->
-                <div style="background-color: #F3F4F6; border-radius: 10px; padding: 24px; margin-top: 24px;">
-                    <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding-bottom: 30px; color: #6B7280; text-align: left;">Amount</td>
-                            <td style="text-align: right; color: #2D3748; font-weight: 500; font-size: 18px;">£500.00</td>
-                        </tr>
-                        <tr>
-                            <td style="padding-bottom: 15px; color: #6B7280; text-align: left;">Ref Number</td>
-                            <td style="text-align: right; color: #2D3748;">23452345</td>
-                        </tr>
-                        <tr>
-                            <td style="padding-bottom: 15px; color: #6B7280; text-align: left;">Apartment</td>
-                            <td style="text-align: right; color: #2D3748;">Emperor Studio Apartment 3</td>
-                        </tr>
-                        <tr>
-                            <td style="padding-bottom: 15px; color: #6B7280; text-align: left;">Name</td>
-                            <td style="text-align: right; color: #2D3748;">Sultan Rasul</td>
-                        </tr>
-                        <tr>
-                            <td style="padding-bottom: 15px; color: #6B7280; text-align: left;">Email</td>
-                            <td style="text-align: right; color: #2D3748;">sultanrasul5@gmail.com</td>
-                        </tr>
-                        <tr>
-                            <td style="padding-bottom: 15px;color: #6B7280; text-align: left;">Phone Number</td>
-                            <td style="text-align: right; color: #2D3748;">07928468825</td>
-                        </tr>
-                    </table>
-
-                    <hr style="height: 1px; margin: 8px 0; background-color: #D1D5DB; border: none;">
-
-                    <!-- Check-in and Check-out -->
-                    <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-                        <tr>
-                            <td style="color: #6B7280; text-align: left;">Check-in</td>
-                            <td style="text-align: left; color: #2D3748;">30/01/2025</td>
-                            <td style="text-align: left; width: 20px; border-left: 1px solid #D1D5DB;"></td>
-                            <td style="color: #6B7280; text-align: left;">Check-out</td>
-                            <td style="text-align: right; color: #2D3748;">02/02/2025</td>
-                        </tr>
-                    </table>
-
-                    <hr style="height: 1px; margin: 8px 0; background-color: #D1D5DB; border: none;">
-
-                    <!-- Adults, Children, Nights -->
-                    <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-                        <tr>
-                            <td style="color: #6B7280; text-align: left;">Adults</td>
-                            <td style="text-align: left; color: #2D3748;">2</td>
-                            <td style="text-align: left; width: 20px; border-left: 1px solid #D1D5DB;"></td>
-                            <td style="color: #6B7280; text-align: left;">Children</td>
-                            <td style="text-align: left; color: #2D3748;">2</td>
-                            <td style="text-align: left; width: 20px; border-left: 1px solid #D1D5DB;"></td>
-                            <td style="color: #6B7280; text-align: left;">Nights</td>
-                            <td style="text-align: right; color: #2D3748;">3</td>
-                        </tr>
-                    </table>
-
-                    <hr style="height: 1px; margin: 8px 0; background-color: #D1D5DB; border: none;">
-
-                    <!-- Children Ages -->
-                    <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-                        <tr>
-                            <td style="color: #6B7280; text-align: left;">Children Ages</td>
-                            <td style="text-align: right; color: #2D3748;">1 and 2 Years Old</td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-        </td>
-    </tr>
-</table>
-
-'''
-
-msg.attach(MIMEText(html_content, 'html'))
-
-
-# Connect to the SendGrid SMTP server and send the email
+            </td>
+        </tr>
+    </table>
+    </body>
+    </html>
+    ''')
 try:
-    # Establish a secure connection using TLS
-    server = smtplib.SMTP(smtp_server, smtp_port)
-    server.starttls()  # Encrypt the connection
-    server.login(username, password)  # Log in using your API key as the password
-
-    # Send the email
-    server.sendmail(from_email, to_email, msg.as_string())
-    print("Email sent successfully!")
-
+    sg = SendGridAPIClient(os.getenv('email'))
+    response = sg.send(message)
+    print(response.status_code)
+    print(response.body)
+    print(response.headers)
 except Exception as e:
-    print(f"Failed to send email: {e}")
-
-finally:
-    server.quit()
+    print(e.message)
