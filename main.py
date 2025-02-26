@@ -333,7 +333,7 @@ def order_success():
 
     message = Mail(
     from_email='booking@rosedenedirect.com',
-    to_emails='sultanrasul5@gmail.com',
+    to_emails=email,
     subject=f'Confirmation of your reservation: Rosedene Highland House No.{jsonResponse["Push_PutConfirmedReservationMulti_RS"]["ReservationID"]}',
     html_content=f'''
     <!DOCTYPE html>
