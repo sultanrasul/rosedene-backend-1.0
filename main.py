@@ -588,7 +588,21 @@ def get_booking():
 
     response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
     jsonResponse = reservation.get_details(response.text)
+    print(jsonResponse)
+    statusCode = int(jsonResponse["Pull_GetReservationByID_RS"]["Status"]["@ID"])
+    statusText = jsonResponse["Pull_GetReservationByID_RS"]["Status"]["#text"]
     
+    if (statusCode != 0):
+
+        if (statusCode == 28):
+            return jsonify({'error': statusText}), 420
+
+        return jsonify({'error': statusText}), 400
+
+    
+
+ 
+    print(jsonResponse)
     reservation_data = {
         "ReservationID": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["ReservationID"],
         "Apartment": apartment_ids.get(int(jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("PropertyID", -1)), "Unknown Apartment"),
