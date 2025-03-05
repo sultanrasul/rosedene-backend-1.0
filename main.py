@@ -1,3 +1,4 @@
+import pandas as pd
 import requests
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -28,8 +29,10 @@ def add_cors_headers(response):
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
     return response
 
-FRONTEND_URL = 'http://localhost:5173'
-BACKEND_URL =  'http://127.0.0.1:5000'
+FRONTEND_URL = 'https://www.rosedenedirect.com'
+# FRONTEND_URL = 'http://localhost:5173'
+BACKEND_URL =  'https://core.rosedenedirect.com'
+# BACKEND_URL =  'http://127.0.0.1:5000'
 
 # Apartment IDs dictionary
 apartment_ids = {
@@ -126,7 +129,7 @@ def create_checkout_session():
     children = int(request.json['children'])
     childrenAges = request.json['childrenAges']
     apartment_number = apartment_ids[property_id].split()[-1]
-    image = "https://rosedene.funkypanda.dev/"+str(apartment_number)+"/0.jpg"
+    image = "https://rosedenedirect.com/"+str(apartment_number)+"/0.jpg"
 
     cancelURL = request.json["url"]
     date_from_obj = datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"])
@@ -620,6 +623,36 @@ def get_booking():
 
     return jsonify({'reservation_data': reservation_data})
 
+@app.route('/get_reviews', methods=['POST'])
+def get_reviews():
+    try:
+        # Read the CSV file with proper dtype handling
+        df = pd.read_csv("reviews.csv", keep_default_na=False)
+
+        # Explicitly convert numerical columns, replacing empty values with 0
+        numeric_columns = ["Review score", "Staff", "Cleanliness", "Location", 
+                           "Facilities", "Comfort", "Value for money"]
+        for col in numeric_columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+
+        # Replace empty values in string columns with an empty string
+        string_columns = ["Review title", "Positive review", "Negative review", "Property reply"]
+        for col in string_columns:
+            df[col] = df[col].fillna("")
+
+        # Pagination
+        page = request.json.get("page", 1)
+        limit = request.json.get("limit", 10)
+        start = (page - 1) * limit
+        end = start + limit
+
+        # Convert DataFrame slice to list of dictionaries
+        reviews = df.iloc[start:end].to_dict(orient="records")
+
+        return jsonify({"reviews": reviews, "page": page, "limit": limit, "total": len(df)})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == '__main__':
-    # app.run(host="192.168.178.63",port=5000)
+    # app.run("0.0.0.0",port=5000)
     app.run(port=5000)
