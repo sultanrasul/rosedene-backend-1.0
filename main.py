@@ -653,6 +653,7 @@ def get_reviews():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
 if __name__ == '__main__':
-    # app.run("0.0.0.0",port=5000)
-    app.run(port=5000)
+    port = int(os.environ.get("PORT", 8080))  # Use the PORT variable or default to 8080
+    app.run(host="0.0.0.0", port=port)
