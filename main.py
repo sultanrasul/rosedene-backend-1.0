@@ -626,19 +626,41 @@ def get_booking():
 @app.route('/get_reviews', methods=['POST'])
 def get_reviews():
     try:
-        # Read the CSV file with proper dtype handling
+        # Read and clean data
         df = pd.read_csv("reviews.csv", keep_default_na=False)
-
-        # Explicitly convert numerical columns, replacing empty values with 0
-        numeric_columns = ["Review score", "Staff", "Cleanliness", "Location", 
-                           "Facilities", "Comfort", "Value for money"]
-        for col in numeric_columns:
+        
+        # Convert columns
+        numeric_cols = ["Review score", "Staff", "Cleanliness", "Location", 
+                       "Facilities", "Comfort", "Value for money"]
+        for col in numeric_cols:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+            
+        # Handle dates
+        df['Review date'] = pd.to_datetime(df['Review date'], errors='coerce')
+        df = df.dropna(subset=['Review date'])
+        
+        # Search implementation
+        search_term = request.json.get("search", "").lower()
+        if search_term:
+            mask = (df['Review title'].str.lower().str.contains(search_term) | 
+                    df['Positive review'].str.lower().str.contains(search_term))
+            df = df[mask]
 
-        # Replace empty values in string columns with an empty string
-        string_columns = ["Review title", "Positive review", "Negative review", "Property reply"]
-        for col in string_columns:
-            df[col] = df[col].fillna("")
+        # Sorting implementation
+        sort_by = request.json.get("sort_by", "date")
+        sort_order = request.json.get("sort_order", "desc")
+        
+        sort_columns = {
+            "date": "Review date",
+            "rating": "Review score"
+        }
+        
+        if sort_by in sort_columns:
+            sort_column = sort_columns[sort_by]
+            df = df.sort_values(
+                sort_column, 
+                ascending=(sort_order == "asc")
+            )
 
         # Pagination
         page = request.json.get("page", 1)
@@ -646,10 +668,18 @@ def get_reviews():
         start = (page - 1) * limit
         end = start + limit
 
-        # Convert DataFrame slice to list of dictionaries
+        # Convert to records
         reviews = df.iloc[start:end].to_dict(orient="records")
 
-        return jsonify({"reviews": reviews, "page": page, "limit": limit, "total": len(df)})
+        return jsonify({
+            "reviews": reviews,
+            "page": page,
+            "limit": limit,
+            "total": len(df),
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+            "search_term": search_term
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
