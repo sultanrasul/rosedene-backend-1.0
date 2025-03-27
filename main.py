@@ -638,13 +638,44 @@ def get_reviews():
         # Handle dates
         df['Review date'] = pd.to_datetime(df['Review date'], errors='coerce')
         df = df.dropna(subset=['Review date'])
-        
-        # Search implementation
-        search_term = request.json.get("search", "").lower()
+
+        # Get filters from request
+        topics = request.json.get("topics", [])
+        search_term = request.json.get("search", "").lower().strip()
+
+        # Initialize masks
+        topics_mask = pd.Series(False, index=df.index)
+        search_mask = pd.Series(False, index=df.index)
+
+        # Build topics mask (OR between topics)
+        if topics:
+            for topic in topics:
+                topic_lower = topic.lower()
+                topic_mask = (
+                    df['Review title'].str.lower().str.contains(topic_lower, na=False) |
+                    df['Positive review'].str.lower().str.contains(topic_lower, na=False)
+                )
+                topics_mask |= topic_mask
+
+        # Build search mask
         if search_term:
-            mask = (df['Review title'].str.lower().str.contains(search_term) | 
-                    df['Positive review'].str.lower().str.contains(search_term))
-            df = df[mask]
+            search_mask = (
+                df['Review title'].str.lower().str.contains(search_term, na=False) |
+                df['Positive review'].str.lower().str.contains(search_term, na=False)
+            )
+
+        # Combine masks with OR logic
+        if topics and search_term:
+            combined_mask = topics_mask | search_mask
+        elif topics:
+            combined_mask = topics_mask
+        elif search_term:
+            combined_mask = search_mask
+        else:
+            combined_mask = pd.Series(True, index=df.index)  # Show all if no filters
+
+        # Apply the combined filter
+        df = df[combined_mask]
 
         # Sorting implementation
         sort_by = request.json.get("sort_by", "date")
@@ -678,11 +709,11 @@ def get_reviews():
             "total": len(df),
             "sort_by": sort_by,
             "sort_order": sort_order,
-            "search_term": search_term
+            "search_term": search_term,
+            "topics": topics
         })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
