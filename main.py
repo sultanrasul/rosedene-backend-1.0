@@ -135,7 +135,7 @@ def create_checkout_session():
     date_from_obj = datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"])
     date_to_obj = datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
 
-     # Check Availability Calendar
+    # Check Availability Calendar
     avail_request = Pull_ListPropertyAvailabilityCalendar_RQ(
         username, password, property_id=property_id,
         date_from=date_from_obj, 
@@ -231,7 +231,90 @@ def create_checkout_session():
     except Exception as e:
         return str(e)
 
-    return jsonify({'url': checkout_session.url})
+    return jsonify({'url': "hello"})
+
+@app.route('/create-checkout', methods=['POST'])
+def create_checkout():
+    date_from = request.json['date_from']
+    date_to = request.json['date_to']
+    property_id = request.json['property_id']
+    adults = int(request.json['adults'])
+    children = int(request.json['children'])
+    childrenAges = request.json['childrenAges']
+    apartment_number = apartment_ids[property_id].split()[-1]
+
+    cancelURL = request.json["url"]
+    date_from_obj = datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"])
+    date_to_obj = datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
+
+    # Check Availability Calendar
+    avail_request = Pull_ListPropertyAvailabilityCalendar_RQ(
+        username, password, property_id=property_id,
+        date_from=date_from_obj, 
+        date_to=date_to_obj
+    )
+
+    response = requests.post(api_endpoint, data=avail_request.serialize_request(), headers={"Content-Type": "application/xml"})
+    calendar = avail_request.check_availability_calendar(response.text)
+    
+    for day in calendar:
+        if day["IsBlocked"] == "true":
+            return jsonify({'error': 'This apartment is not available for these dates!'}), 420
+    
+    
+
+    # Calculate the number of nights
+    nights = (date_to_obj - date_from_obj).days
+
+    # Get Price
+    # customerPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, guests=(adults+children),
+    #     date_from=date_from_obj, 
+    #     date_to=date_to_obj
+    # )
+    customerPrice = 459
+    if customerPrice == 0:
+        return jsonify({'error': 'This apartment is not available for these dates!'}), 420
+
+    displayDate = f'{date_from["day"]}/{date_from["month"]}/{date_from["year"]} - {date_to["day"]}/{date_to["month"]}/{date_to["year"]}'
+    description = f"{displayDate} • {adults} Adult{'s' if adults > 1 else ''}"
+    if children > 0:
+        description += f" • {children} Child{'ren' if children != 1 else ''}"
+
+    
+
+    try:
+        payment_intent = stripe.PaymentIntent.create(
+            amount=int(customerPrice * 100),  # Amount in pence
+            currency='gbp',
+            automatic_payment_methods={
+                'enabled': True,
+            },
+            metadata={
+                "apartment_id": property_id,
+                "apartment_name": apartment_ids[property_id],
+                "date_from": f"{date_from['day']}/{date_from['month']}/{date_from['year']}",
+                "date_to": f"{date_to['day']}/{date_to['month']}/{date_to['year']}",
+                "adults": adults,
+                "children": children,
+                "children_ages": ",".join(str(e) for e in childrenAges),
+                "nights": nights,
+                "price": customerPrice,
+                "name": "",
+                "email": "",
+                "phone_number": "",
+                "booking_reference": ""
+            },
+            description=f"Booking for {apartment_ids[property_id]}",
+            capture_method='manual'  # Keep if you need manual capture
+        )
+
+    except Exception as e:
+        return str(e)
+
+    return jsonify({
+            'clientSecret': payment_intent.client_secret,
+            'amount': customerPrice  # Optional: Send amount for display
+        })
 
 @app.route('/success', methods=['GET'])
 def order_success():
