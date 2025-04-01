@@ -48,6 +48,21 @@ apartment_ids = {
     3070530: 'Emperor Studio Apartment 3',
 }
 
+# Apartment IDs dictionary
+max_guests = {
+    # Apartment Number : Max Guests
+    1: 6,
+    2: 6,
+    3: 4,
+    4: 3,
+    5: 4,
+    6: 6,
+    7: 4,
+    8: 6,
+    9: 4,
+    10: 6,
+}
+
 # API credentials and endpoints
 username = os.getenv('username')
 password = os.getenv('password')
@@ -122,6 +137,7 @@ def check_calendar():
 
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
+    
     date_from = request.json['date_from']
     date_to = request.json['date_to']
     property_id = request.json['property_id']
@@ -253,6 +269,8 @@ def create_checkout():
         date_from=date_from_obj, 
         date_to=date_to_obj
     )
+    if children+adults > max_guests[int(apartment_number)]:
+        return jsonify({'error': f'Max Guests allowed for this apartment is {max_guests[int(apartment_number)]}'}), 420
 
     response = requests.post(api_endpoint, data=avail_request.serialize_request(), headers={"Content-Type": "application/xml"})
     calendar = avail_request.check_availability_calendar(response.text)
@@ -267,11 +285,10 @@ def create_checkout():
     nights = (date_to_obj - date_from_obj).days
 
     # Get Price
-    # customerPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, guests=(adults+children),
-    #     date_from=date_from_obj, 
-    #     date_to=date_to_obj
-    # )
-    customerPrice = 459
+    customerPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, guests=(adults+children),
+        date_from=date_from_obj, 
+        date_to=date_to_obj
+    )
     if customerPrice == 0:
         return jsonify({'error': 'This apartment is not available for these dates!'}), 420
 
@@ -279,12 +296,12 @@ def create_checkout():
     description = f"{displayDate} • {adults} Adult{'s' if adults > 1 else ''}"
     if children > 0:
         description += f" • {children} Child{'ren' if children != 1 else ''}"
-
     
 
     try:
         payment_intent = stripe.PaymentIntent.create(
-            amount=int(customerPrice * 100),  # Amount in pence
+            amount=int(customerPrice * 100),
+                # Amount in pence
             currency='gbp',
             automatic_payment_methods={
                 'enabled': True,
@@ -316,26 +333,27 @@ def create_checkout():
             'amount': customerPrice  # Optional: Send amount for display
         })
 
-@app.route('/success', methods=['GET'])
+@app.route('/success', methods=['POST'])
 def order_success():
-    session_id = request.args.get('session_id')
-    session = stripe.checkout.Session.retrieve(session_id)
 
-    payment_intent_id = session.get("payment_intent")
+    data = request.json
+    payment_intent_id = data["paymentIntentId"]
+    special_request = data["specialRequests"]
     payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+
     current_meta_data_pi = payment_intent.metadata
-    
-    #  Customer Details
-    name = session["customer_details"]["name"]
-    email = session["customer_details"]["email"]
-    phone_number = session["customer_details"]["phone"]
-    postal_code = session["customer_details"]["address"]["postal_code"]
-    country = session["customer_details"]["address"]["country"]
 
-    # Special Requestæ
-    special_request = session.get("custom_fields", [{}])[0].get("text", {}).get("value", "") or ""
+    billingDetails = stripe.PaymentMethod.retrieve(payment_intent.payment_method).billing_details
 
-    meta_data = session["metadata"]
+    country = billingDetails.address.country
+    postal_code = billingDetails.address.postal_code
+    name = billingDetails.name
+    email = billingDetails.email
+    phone_number = billingDetails.phone
+
+
+
+    meta_data = current_meta_data_pi
     adults = int(meta_data["adults"])
     apartment_id = int(meta_data["apartment_id"])
     apartment_name = meta_data["apartment_name"]
@@ -411,7 +429,7 @@ def order_success():
             f"date_from={date_from}&date_to={date_to}&adults={adults}&children={children}&"
             f"children_ages={','.join(childrenAges)}&nights={nights}&error={error}&errorCode={status}"
         )
-        return redirect(redirect_url)
+        return jsonify({'error': status}), 420
 
     payment_intent.capture()
 
@@ -665,7 +683,7 @@ def order_success():
     # Include additional data in the redirect URL
     redirect_url = (f"{FRONTEND_URL}/details?ref_number={jsonResponse['Push_PutConfirmedReservationMulti_RS']['ReservationID']}")
 
-    return redirect(redirect_url)
+    return jsonify({'booking_reference': jsonResponse["Push_PutConfirmedReservationMulti_RS"]["ReservationID"]})
 
 @app.route('/get_booking', methods=['POST'])
 def get_booking():
