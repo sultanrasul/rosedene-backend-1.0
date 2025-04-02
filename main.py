@@ -668,7 +668,7 @@ def order_success():
         print(response.status_code)
         print(response.body)
     except Exception as e:
-        print(f"Error sending email: {str(e)}")  # More detailed error
+        print(f"Error sending email: {str(e)}")  
 
     ###### SEND BOOKING CONFIRMATION ######
 
@@ -682,11 +682,38 @@ def order_success():
     # Include additional data in the redirect URL
     redirect_url = (f"{FRONTEND_URL}/details?ref_number={jsonResponse['Push_PutConfirmedReservationMulti_RS']['ReservationID']}")
 
-    return jsonify({'booking_reference': jsonResponse["Push_PutConfirmedReservationMulti_RS"]["ReservationID"]})
+    return jsonify({'booking_reference': jsonResponse["Push_PutConfirmedReservationMulti_RS"]["ReservationID"],'email': email})
+
+def extract_special_request(booking_text):
+    lines = booking_text.splitlines()
+    special_request = []
+    capture = False
+    
+    for line in lines:
+        stripped = line.strip()
+        
+        if stripped.startswith("Special Request:"):
+            capture = True
+            # Add content after the colon if present
+            request_part = stripped.split(':', 1)[1].strip()
+            if request_part:
+                special_request.append(request_part)
+            continue
+            
+        if capture:
+            # Stop when encountering known next sections
+            if stripped.startswith(("Stripes Payment ID:", "Country:")):
+                break
+            if stripped:  # Add non-empty lines
+                special_request.append(stripped)
+                
+    return ' '.join(special_request) if special_request else ''
+
 
 @app.route('/get_booking', methods=['POST'])
 def get_booking():
     booking_ref = request.json.get('booking_ref')
+    email = request.json.get('email')
     reservation = Pull_GetReservationByID_RQ(username, password, booking_ref)
 
     response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
@@ -702,6 +729,11 @@ def get_booking():
 
         return jsonify({'error': statusText}), 400
 
+    bookingEmail = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["CustomerInfo"]["Email"]
+
+    if email.lower() != bookingEmail.lower():
+        return jsonify({'error': statusText}), 420
+
     
 
  
@@ -711,7 +743,8 @@ def get_booking():
         "Apartment": apartment_ids.get(int(jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("PropertyID", -1)), "Unknown Apartment"),
         "DateFrom": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("DateFrom"),
         "DateTo": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("DateTo"),
-        "ClientPrice": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("Costs", {}).get("ClientPrice")
+        "ClientPrice": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("Costs", {}).get("ClientPrice"),
+        "SpecialRequest": extract_special_request(jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["Comments"])
     }
 
     # Add optional fields only if they exist

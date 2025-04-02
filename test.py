@@ -49,16 +49,43 @@ api_endpoint = "https://new.rentalsunited.com/api/handler.ashx"
 
 
 
-reservation = Pull_GetReservationByID_RQ(username, password, 142973124)
+# reservation = Pull_GetReservationByID_RQ(username, password, 142973124)
 
-response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
-jsonResponse = reservation.get_details(response.text)
-reservation_data = {
-    "PropertyID": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"]["PropertyID"],
-    "DateFrom": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"]["DateFrom"],
-    "DateTo": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"]["DateTo"],
-    "ClientPrice": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"]["Costs"]["ClientPrice"],
-    "CustomerInfo": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["CustomerInfo"],
-    "GuestDetailsInfo": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["GuestDetailsInfo"]
-}
-print(jsonResponse)
+# response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
+# jsonResponse = reservation.get_details(response.text)
+# reservation_data = {
+#     "PropertyID": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"]["PropertyID"],
+#     "DateFrom": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"]["DateFrom"],
+#     "DateTo": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"]["DateTo"],
+#     "ClientPrice": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"]["Costs"]["ClientPrice"],
+#     "CustomerInfo": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["CustomerInfo"],
+#     "GuestDetailsInfo": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["GuestDetailsInfo"]
+# }
+# print(jsonResponse)
+
+def extract_special_request(booking_text):
+    lines = booking_text.splitlines()
+    special_request = []
+    capture = False
+    
+    for line in lines:
+        stripped = line.strip()
+        
+        if stripped.startswith("Special Request:"):
+            capture = True
+            # Add content after the colon if present
+            request_part = stripped.split(':', 1)[1].strip()
+            if request_part:
+                special_request.append(request_part)
+            continue
+            
+        if capture:
+            # Stop when encountering known next sections
+            if stripped.startswith(("Stripes Payment ID:", "Country:")):
+                break
+            if stripped:  # Add non-empty lines
+                special_request.append(stripped)
+                
+    return ' '.join(special_request) if special_request else ''
+
+print(extract_special_request("Booking Information:\r\nAdults: 1\r\nChildren: 1\r\nChild 1: 2 Years Old\r\n\r\nStripes Payment ID: pi_3R9FtRAQmfY2PDog0cjPZehc\r\n\r\nCountry: GB"))
