@@ -667,9 +667,8 @@ def order_success():
         response = sg.send(message)
         print(response.status_code)
         print(response.body)
-        print(response.headers)
     except Exception as e:
-        print(e.message)
+        print(f"Error sending email: {str(e)}")  # More detailed error
 
     ###### SEND BOOKING CONFIRMATION ######
 
