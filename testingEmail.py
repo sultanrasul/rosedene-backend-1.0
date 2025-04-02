@@ -10,7 +10,7 @@ load_dotenv()
 
 message = Mail(
     from_email='booking@rosedenedirect.com',
-    to_emails='sultanrasul5@gmail.com',
+    to_emails='ee6d54a9a014f58cc4eadda4f6586cc3246ffd66@multirbl.valli.org',
     subject=f'Confirmation of your reservation: Rosedene Highland House No.143065566',
     html_content='''
     <!DOCTYPE html>
