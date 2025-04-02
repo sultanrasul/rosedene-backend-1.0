@@ -13,13 +13,26 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 import time
 
-# This is your test secret API key.
+import hashlib
+from flask_caching import Cache
+import json
 
 import os
 from dotenv import load_dotenv
 load_dotenv()
 
+
 app = Flask(__name__)
+
+# Configure Flask-Caching
+cache = Cache(config={'CACHE_TYPE': 'simple'})  # Configure as needed
+cache.init_app(app)
+
+def make_cache_key():
+    """Generate a unique cache key based on the request payload."""
+    data = request.get_json() or {}  # Get request body
+    data_string = json.dumps(data, sort_keys=True)  # Convert to string
+    return hashlib.md5(data_string.encode()).hexdigest()  # Hash for uniqueness
 
 stripe.api_key = os.getenv('sk')
 
@@ -102,6 +115,7 @@ def check_blocked_apartments():
 
 
 @app.route('/check_price', methods=['POST'])
+@cache.memoize(timeout=300)  # Cache responses for 5 minutes
 def check_price():
 
     property_id = request.json['property_id']
@@ -421,14 +435,6 @@ def order_success():
     
     if status !=0:
         payment_intent.cancel()
-        error = jsonResponse["Push_PutConfirmedReservationMulti_RS"]["Status"]["#text"]
-        redirect_url = (
-            f"{FRONTEND_URL}/details?"
-            f"name={name}&email={email}&phone_number={phone_number}&"
-            f"apartment_name={apartment_name}&price={ruPrice}&"
-            f"date_from={date_from}&date_to={date_to}&adults={adults}&children={children}&"
-            f"children_ages={','.join(childrenAges)}&nights={nights}&error={error}&errorCode={status}"
-        )
         return jsonify({'error': status}), 420
 
     payment_intent.capture()
@@ -679,9 +685,6 @@ def order_success():
     current_meta_data_pi["phone_number"] = phone_number
     payment_intent.modify(payment_intent_id,metadata=current_meta_data_pi)
    
-    # Include additional data in the redirect URL
-    redirect_url = (f"{FRONTEND_URL}/details?ref_number={jsonResponse['Push_PutConfirmedReservationMulti_RS']['ReservationID']}")
-
     return jsonify({'booking_reference': jsonResponse["Push_PutConfirmedReservationMulti_RS"]["ReservationID"],'email': email})
 
 def extract_special_request(booking_text):
@@ -711,6 +714,7 @@ def extract_special_request(booking_text):
 
 
 @app.route('/get_booking', methods=['POST'])
+@cache.memoize(timeout=300)  # Cache responses for 5 minutes
 def get_booking():
     booking_ref = request.json.get('booking_ref')
     email = request.json.get('email')
@@ -718,7 +722,6 @@ def get_booking():
 
     response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
     jsonResponse = reservation.get_details(response.text)
-    print(jsonResponse)
     statusCode = int(jsonResponse["Pull_GetReservationByID_RS"]["Status"]["@ID"])
     statusText = jsonResponse["Pull_GetReservationByID_RS"]["Status"]["#text"]
     
@@ -758,6 +761,12 @@ def get_booking():
 
 @app.route('/get_reviews', methods=['POST'])
 def get_reviews():
+    cache_key = make_cache_key()  # Generate key based on request data
+    cached_response = cache.get(cache_key)
+
+    if cached_response:
+        return cached_response  # Return cached response if exists
+
     try:
         # Read and clean data
         df = pd.read_csv("reviews.csv", keep_default_na=False)
@@ -835,7 +844,7 @@ def get_reviews():
         # Convert to records
         reviews = df.iloc[start:end].to_dict(orient="records")
 
-        return jsonify({
+        response = jsonify({
             "reviews": reviews,
             "page": page,
             "limit": limit,
@@ -846,7 +855,12 @@ def get_reviews():
             "topics": topics
         })
 
+        cache.set(cache_key, response, timeout=300)  # Store in cache
+
+        return response
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
