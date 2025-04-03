@@ -714,10 +714,16 @@ def extract_special_request(booking_text):
 
 
 @app.route('/get_booking', methods=['POST'])
-@cache.memoize(timeout=300)  # Cache responses for 5 minutes
 def get_booking():
     booking_ref = request.json.get('booking_ref')
     email = request.json.get('email')
+
+    cache_key = f"booking:{booking_ref}:{email.lower()}"
+    cached_response = cache.get(cache_key)
+
+    if cached_response:
+        return cached_response 
+
     reservation = Pull_GetReservationByID_RQ(username, password, booking_ref)
 
     response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
@@ -757,7 +763,11 @@ def get_booking():
     if "GuestDetailsInfo" in jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]:
         reservation_data["GuestDetailsInfo"] = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["GuestDetailsInfo"]
 
-    return jsonify({'reservation_data': reservation_data})
+    response_data = {'reservation_data': reservation_data}
+
+    cache.set(cache_key, response_data, timeout=300)  # Store in cache
+
+    return jsonify(response_data)
 
 @app.route('/get_reviews', methods=['POST'])
 def get_reviews():
