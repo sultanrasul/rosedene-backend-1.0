@@ -2,6 +2,7 @@ import pandas as pd
 import requests
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+import stripe.webhook
 from add_booking import Push_PutConfirmedReservationMulti_RQ
 from get_booking import Pull_GetReservationByID_RQ
 from location_check import Pull_ListPropertiesBlocks_RQ
@@ -35,6 +36,7 @@ def make_cache_key():
     return hashlib.md5(data_string.encode()).hexdigest()  # Hash for uniqueness
 
 stripe.api_key = os.getenv('sk')
+stripe_webhook_key = os.getenv('whsec')
 
 @app.after_request
 def add_cors_headers(response):
@@ -147,130 +149,23 @@ def check_calendar():
 
     return calendar
 
-
-
-@app.route('/create-checkout-session', methods=['POST'])
-def create_checkout_session():
-    
-    date_from = request.json['date_from']
-    date_to = request.json['date_to']
-    property_id = request.json['property_id']
-    adults = int(request.json['adults'])
-    children = int(request.json['children'])
-    childrenAges = request.json['childrenAges']
-    apartment_number = apartment_ids[property_id].split()[-1]
-    image = "https://rosedenedirect.com/"+str(apartment_number)+"/0.jpg"
-
-    cancelURL = request.json["url"]
-    date_from_obj = datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"])
-    date_to_obj = datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
-
-    # Check Availability Calendar
-    avail_request = Pull_ListPropertyAvailabilityCalendar_RQ(
-        username, password, property_id=property_id,
-        date_from=date_from_obj, 
-        date_to=date_to_obj
-    )
-
-    response = requests.post(api_endpoint, data=avail_request.serialize_request(), headers={"Content-Type": "application/xml"})
-    calendar = avail_request.check_availability_calendar(response.text)
-    
-    for day in calendar:
-        if day["IsBlocked"] == "true":
-            return jsonify({'error': 'This apartment is not available for these dates!'}), 420
-    
-    
-
-    # Calculate the number of nights
-    nights = (date_to_obj - date_from_obj).days
-
-    # Get Price
-    customerPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, guests=(adults+children),
-        date_from=date_from_obj, 
-        date_to=date_to_obj
-    )
-    if customerPrice == 0:
-        return jsonify({'error': 'This apartment is not available for these dates!'}), 420
-
-    displayDate = f'{date_from["day"]}/{date_from["month"]}/{date_from["year"]} - {date_to["day"]}/{date_to["month"]}/{date_to["year"]}'
-    description = f"{displayDate} • {adults} Adult{'s' if adults > 1 else ''}"
-    if children > 0:
-        description += f" • {children} Child{'ren' if children != 1 else ''}"
-
-    
-
-    try:
-        checkout_session = stripe.checkout.Session.create(
-            line_items=[
-                {
-                    "price_data": {
-                        "currency": "gbp",
-                        "product_data": {
-                            "name": apartment_ids[property_id],
-                            "description": description,
-                            "images": [image],
-                        },
-                        "unit_amount_decimal": customerPrice * 100,
-                    },
-                    "quantity": 1,
-                },
-            ],
-            mode='payment',
-            phone_number_collection={"enabled": True},
-            success_url=BACKEND_URL+"/success?session_id={CHECKOUT_SESSION_ID}",
-            cancel_url=cancelURL,
-            custom_fields=[
-                {
-                    "key": "special_request",
-                    "label": {"type": "custom", "custom": "Special Requests"},
-                    "type": "text",
-                    'optional': True,
-                }
-            ],
-            metadata={
-                "apartment_id": property_id,
-                "apartment_name": apartment_ids[property_id],
-                "date_from": f"{date_from['day']}/{date_from['month']}/{date_from['year']}",
-                "date_to": f"{date_to['day']}/{date_to['month']}/{date_to['year']}",
-                "adults": adults,
-                "children": children,
-                "children_ages": ",".join(str(e) for e in childrenAges),
-                "nights": nights,
-                "price": customerPrice
-            },
-            payment_intent_data={  # Add this section
-                "description": "d",
-                "metadata": {
-                    "apartment_id": property_id,
-                    "apartment_name": apartment_ids[property_id],
-                    "date_from": f"{date_from['day']}/{date_from['month']}/{date_from['year']}",
-                    "date_to": f"{date_to['day']}/{date_to['month']}/{date_to['year']}",
-                    "adults": adults,
-                    "children": children,
-                    "children_ages": ",".join(str(e) for e in childrenAges),
-                    "nights": nights,
-                    "price": customerPrice,
-                    "name": "",
-                    "email": "",
-                    "phone_number": "",
-                    "booking_reference": ""
-                },
-                "capture_method": "manual",
-            }
-        )
-    except Exception as e:
-        return str(e)
-
-    return jsonify({'url': "hello"})
-
 @app.route('/create-checkout', methods=['POST'])
 def create_checkout():
+    # Booking Information
     date_from = request.json['date_from']
     date_to = request.json['date_to']
     property_id = request.json['property_id']
     adults = int(request.json['adults'])
     children = int(request.json['children'])
     childrenAges = request.json['childrenAges']
+
+    # Guest Information
+    name = request.json['name']
+    phone = request.json['phone']
+    email = request.json['email']
+    specialRequests = request.json['special_requests']
+
+
     apartment_number = apartment_ids[property_id].split()[-1]
 
     cancelURL = request.json["url"]
@@ -330,10 +225,11 @@ def create_checkout():
                 "children_ages": ",".join(str(e) for e in childrenAges),
                 "nights": nights,
                 "price": customerPrice,
-                "name": "",
-                "email": "",
-                "phone_number": "",
-                "booking_reference": ""
+                "name": name,
+                "email": email,
+                "phone_number": phone,
+                "special_requests": specialRequests,
+                "booking_reference": "",
             },
             description=f"Booking for {apartment_ids[property_id]}",
             capture_method='manual'  # Keep if you need manual capture
@@ -346,6 +242,99 @@ def create_checkout():
             'clientSecret': payment_intent.client_secret,
             'amount': customerPrice  # Optional: Send amount for display
         })
+
+
+@app.route('/update-guest-info', methods=['POST'])
+def update_guest_info():
+    data = request.json
+    client_secret = data.get('client_secret')
+
+    # Validate input
+    if not client_secret:
+        return jsonify({"error": "Missing client_secret"}), 400
+
+    # Extract metadata fields
+    name = data.get('name', '')
+    phone = data.get('phone', '')
+    email = data.get('email', '')
+    special_requests = data.get('special_requests', '')
+    payment_intent_id = client_secret.split("_secret")[0]
+
+
+    print(client_secret, name, phone, email, payment_intent_id)
+
+    try:
+        # Update metadata
+        stripe.PaymentIntent.modify(
+            payment_intent_id,
+            metadata={
+                "name": name,
+                "phone_number": phone,
+                "email": email,
+                "special_requests": special_requests
+            }
+        )
+        return jsonify({"message": "Guest info updated successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    event = None
+    payload = request.data
+    sig_header = request.headers['STRIPE_SIGNATURE']
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, stripe_webhook_key
+        )
+    except ValueError as e:
+        # Invalid payload
+        raise e
+    except stripe.error.SignatureVerificationError as e:
+        # Invalid signature
+        raise e
+
+    # Handle the event
+    if event['type'] == 'charge.succeeded':
+      
+        payment_intent = event['data']['object']
+        billing_details = payment_intent['billing_details']
+
+        meta_data = payment_intent.metadata
+        adults = int(meta_data["adults"])
+        apartment_id = int(meta_data["apartment_id"])
+        apartment_name = meta_data["apartment_name"]
+        children = int(meta_data["children"])
+        childrenAges = []
+        if children > 0:
+            childrenAges = meta_data["children_ages"].split(",")
+        date_from = meta_data["date_from"]
+        date_to = meta_data["date_to"]
+        nights = int(meta_data["nights"])
+
+    
+        dateFrom = {
+            "day": int(date_from.split("/")[0]),
+            "month": int(date_from.split("/")[1]),
+            "year": int(date_from.split("/")[2])
+        }
+        dateTo = {
+            "day": int(date_to.split("/")[0]),
+            "month": int(date_to.split("/")[1]),
+            "year": int(date_to.split("/")[2])
+        }
+    
+
+        print(adults, apartment_id, apartment_name, childrenAges, dateFrom, dateTo, nights)
+        print("Billing Details: ", billing_details)
+    # ... handle other event types
+    else:
+      print('Unhandled event type {}'.format(event['type']))
+
+    return jsonify(success=True)
 
 @app.route('/success', methods=['POST'])
 def order_success():
