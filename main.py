@@ -14,6 +14,7 @@ import stripe
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 import time
+import traceback
 
 import hashlib
 from flask_caching import Cache
@@ -631,7 +632,7 @@ def webhook():
             print(response.body)
             print(response.headers)
         except Exception as e:
-            print(e.message)
+            traceback.print_exc()  # full error trace
 
         ###### SEND BOOKING CONFIRMATION ######
 

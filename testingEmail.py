@@ -6,6 +6,7 @@ from sendgrid.helpers.mail import Mail
 import os
 from dotenv import load_dotenv
 load_dotenv()
+import traceback
 
 
 message = Mail(
@@ -231,10 +232,12 @@ message = Mail(
     </html>
     ''')
 try:
-    sg = SendGridAPIClient(os.getenv('email'))
+    sg = SendGridAPIClient(os.getenv('email')+"testing")
     response = sg.send(message)
     print(response.status_code)
     print(response.body)
     print(response.headers)
 except Exception as e:
-    print(e.message)
+    traceback.print_exc()  # full error trace
+
+print("what is good buddy")
