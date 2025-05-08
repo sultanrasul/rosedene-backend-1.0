@@ -442,7 +442,7 @@ def webhook():
                             <tr>
                                 <td style="padding:10px; text-align:center;">
                                     <p style="color:#2d3748; font-size:12px; margin:8px 0 30px;text-align:center;">
-                                        IMPORTANT: This confirmation email has been generated automatically, so please do not reply to this address. To view or cancel your reservation, please go to the "Find Details" section of our website and quote the confirmation or reservation number shown in this email.
+                                        IMPORTANT: This confirmation email has been generated automatically, so please do not reply to this address. To view or cancel your reservation, please go to the "Manage Booking" section of our website and quote the confirmation or reservation number shown in this email.
                                     </p>
                                     <img src="https://rosedenedirect.com/logo.png" alt="Rosedene Logo" style="width:90%; max-width:200px; margin:0 auto 30px; display:block;">
                                     
@@ -514,7 +514,7 @@ def webhook():
                                                 <table width="100%">
                                                     <tr>
                                                         <td style="color:#64748b; font-weight:500;">Total Amount</td>
-                                                        <td style="text-align:right; color:#1e293b; font-size:24px; font-weight:700;">£3600.00</td>
+                                                        <td style="text-align:right; color:#1e293b; font-size:24px; font-weight:700;">£{ruPrice}</td>
                                                     </tr>
                                                 </table>
                                             </td>
