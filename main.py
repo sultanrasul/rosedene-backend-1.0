@@ -119,7 +119,7 @@ def check_blocked_apartments():
 
 
 @app.route('/check_price', methods=['POST'])
-@cache.memoize(timeout=300)  # Cache responses for 5 minutes
+# @cache.memoize(timeout=300) # this does not work because if someone was to go to apatment 1 check the price then went to apartment 2 they would still get the price for apartment 1
 def check_price():
 
     property_id = request.json['property_id']
