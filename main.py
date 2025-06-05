@@ -131,6 +131,31 @@ def check_price():
 
     return prices
 
+@app.route('/verify_price', methods=['POST'])
+# @cache.memoize(timeout=300) # this does not work because if someone was to go to apatment 1 check the price then went to apartment 2 they would still get the price for apartment 1
+def verify_price():
+    print(request.json)
+    property_id = request.json['property_id']
+    refundable = request.json['refundable']
+    date_from = request.json['date_from']
+    date_to = request.json['date_to']
+    adults = int(request.json['adults'])
+    children = int(request.json['children'])
+
+
+    date_from_obj = datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"])
+    date_to_obj = datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
+    # # Check Apartment Price
+    
+    prices = Pull_ListPropertyPrices_RQ.get_all_prices()[str(property_id)]
+    customerPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, guests=(adults+children),
+        date_from=date_from_obj, 
+        date_to=date_to_obj,
+        refundable=refundable
+    )
+
+    return str(customerPrice)
+
 @app.route('/check_calendar', methods=['POST'])
 def check_calendar():
 
@@ -160,6 +185,8 @@ def create_checkout():
     adults = int(request.json['adults'])
     children = int(request.json['children'])
     childrenAges = request.json['childrenAges']
+    refundable = request.json['refundable']
+    
 
     # Guest Information
     name = request.json['name']
@@ -198,7 +225,8 @@ def create_checkout():
     # Get Price
     customerPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, guests=(adults+children),
         date_from=date_from_obj, 
-        date_to=date_to_obj
+        date_to=date_to_obj,
+        refundable=refundable
     )
     if customerPrice == 0:
         return jsonify({'error': 'This apartment is not available for these dates!'}), 420
@@ -231,6 +259,7 @@ def create_checkout():
                 "email": email,
                 "phone_number": phone,
                 "special_requests": specialRequests,
+                "refundable": refundable,
                 "booking_reference": "",
             },
             description=f"Booking for {apartment_ids[property_id]}",
@@ -316,6 +345,7 @@ def webhook():
         adults = int(meta_data["adults"])
         apartment_id = int(meta_data["apartment_id"])
         apartment_name = meta_data["apartment_name"]
+        refundable = meta_data["refundable"]
         children = int(meta_data["children"])
         childrenAges = []
         if children > 0:
@@ -339,17 +369,22 @@ def webhook():
     
         ruPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=apartment_id, guests=(adults+children),
             date_from = datetime(day=dateFrom["day"], month=dateFrom["month"], year=dateFrom["year"]),
-            date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"])
+            date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"]),
+            refundable=refundable
         )
     
-        booking_info = f"Booking Information:\nAdults: {adults}\nChildren: {children}"
-        if children > 0:
-            for i, age in enumerate(childrenAges, 1):
-                booking_info += f"\nChild {i}: {age} Years Old"
-        if special_requests != "":
-            booking_info += f"\n\nSpecial Request:\n{special_requests}"
-        booking_info+= f"\n\nStripes Payment ID: {payment_intent_id}"
-        booking_info+= f"\n\nCountry: {country}"
+        booking_data = {
+            "adults": adults,
+            "children": children,
+            "childrenAges": childrenAges if children > 0 else [],
+            "specialRequest": special_requests,
+            "refundable": refundable,
+            "paymentIntentId": payment_intent_id,
+            "country": country
+        }
+
+        booking_info = json.dumps(booking_data, indent=2)  # optional `indent` for human-readability
+
 
         # Add Booking to Rentals United
         print("REAL ATTEMP TO BOOK!")
@@ -727,7 +762,7 @@ def order_success():
 
     ruPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=apartment_id, guests=(adults+children),
         date_from = datetime(day=dateFrom["day"], month=dateFrom["month"], year=dateFrom["year"]),
-        date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"])
+        date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"]),
     )
     
     booking_info = f"Booking Information:\nAdults: {adults}\nChildren: {children}"

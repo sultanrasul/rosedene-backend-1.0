@@ -82,7 +82,7 @@ class Pull_ListPropertyPrices_RQ:
     #     return basePrice
 
     @staticmethod
-    def calculate_ru_price(property_id, guests, date_from, date_to):
+    def calculate_ru_price(property_id, guests, date_from, date_to, refundable):
         saved_prices = Pull_ListPropertyPrices_RQ.get_all_prices()
         
         property_data = saved_prices[str(property_id)]
@@ -113,6 +113,10 @@ class Pull_ListPropertyPrices_RQ:
                     break  # No need to check other seasons for the same night
             
             current_date += timedelta(days=1)  # Move to next night
+
+        if refundable:
+            refundableRate = round(total_price * 0.0575, 2) # times by 105.75% to add on the 5.75% for the refundable rate
+            total_price+=refundableRate
 
         return total_price
 
