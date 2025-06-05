@@ -114,9 +114,43 @@ class Pull_ListPropertyPrices_RQ:
             
             current_date += timedelta(days=1)  # Move to next night
 
+        return total_price
+
+    def calculate_client_price(property_id, guests, date_from, date_to, refundable):
+        saved_prices = Pull_ListPropertyPrices_RQ.get_all_prices()
+        
+        property_data = saved_prices[str(property_id)]
+        prices_info = property_data["Prices"]
+
+        if "Season" not in prices_info:
+            print(f"No seasonal pricing available for property ID {str(property_id)}.")
+            return None
+        
+        if not isinstance(prices_info["Season"], list):
+                prices_info["Season"] = [prices_info["Season"]]
+
+        total_price = 0
+        current_date = date_from
+
+        # Iterate over each night in the stay
+        while current_date < date_to:
+            for season in prices_info["Season"]:
+                season_start = datetime.strptime(season["@DateFrom"], "%Y-%m-%d")
+                season_end = datetime.strptime(season["@DateTo"], "%Y-%m-%d")
+
+                # If the current night falls within a season range, add its price
+                if season_start <= current_date <= season_end:
+                    total_price += float(season["Price"])
+                    if (guests > 2):
+                        total_price += float(season["Extra"]) * (guests - 2)
+                    
+                    break  # No need to check other seasons for the same night
+            
+            current_date += timedelta(days=1)  # Move to next night
+        
         if refundable:
             refundableRate = round(total_price * 0.0575, 2) # times by 105.75% to add on the 5.75% for the refundable rate
             total_price+=refundableRate
-
+            
         return total_price
 
