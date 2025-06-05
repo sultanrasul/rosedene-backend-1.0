@@ -134,7 +134,6 @@ def check_price():
 @app.route('/verify_price', methods=['POST'])
 # @cache.memoize(timeout=300) # this does not work because if someone was to go to apatment 1 check the price then went to apartment 2 they would still get the price for apartment 1
 def verify_price():
-    print(request.json)
     property_id = request.json['property_id']
     refundable = request.json['refundable']
     date_from = request.json['date_from']
@@ -291,9 +290,6 @@ def update_guest_info():
     special_requests = data.get('special_requests', '')
     payment_intent_id = client_secret.split("_secret")[0]
 
-
-    print(client_secret, name, phone, email, payment_intent_id)
-
     try:
         # Update metadata
         stripe.PaymentIntent.modify(
@@ -370,6 +366,11 @@ def webhook():
         ruPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=apartment_id, guests=(adults+children),
             date_from = datetime(day=dateFrom["day"], month=dateFrom["month"], year=dateFrom["year"]),
             date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"]),
+        )
+
+        clientPrice = Pull_ListPropertyPrices_RQ.calculate_client_price(property_id=apartment_id, guests=(adults+children),
+            date_from = datetime(day=dateFrom["day"], month=dateFrom["month"], year=dateFrom["year"]),
+            date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"]),
             refundable=refundable
         )
     
@@ -387,8 +388,6 @@ def webhook():
 
 
         # Add Booking to Rentals United
-        print("REAL ATTEMP TO BOOK!")
-        
         reservation = Push_PutConfirmedReservationMulti_RQ(
             username,
             password,
@@ -396,9 +395,9 @@ def webhook():
             date_from = datetime(day=dateFrom["day"], month=dateFrom["month"], year=dateFrom["year"]),
             date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"]),
             number_of_guests= adults+children,
-            client_price=ruPrice,
+            client_price=clientPrice,
             ru_price=ruPrice,
-            already_paid=ruPrice,
+            already_paid=clientPrice,
             customer_name=name,
             customer_surname=" ",
             customer_email=email,
@@ -688,7 +687,6 @@ def check_payment_status():
         email = data["email"]
 
         payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
-        print(payment_intent)
         metadata = payment_intent.metadata
         status = payment_intent.status
         
@@ -1112,10 +1110,7 @@ def get_booking():
     if email.lower() != bookingEmail.lower():
         return jsonify({'error': statusText}), 420
 
-    
 
- 
-    print(jsonResponse)
     reservation_data = {
         "ReservationID": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["ReservationID"],
         "Apartment": apartment_ids.get(int(jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("PropertyID", -1)), "Unknown Apartment"),
