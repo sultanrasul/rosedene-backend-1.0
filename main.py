@@ -147,7 +147,7 @@ def verify_price():
     # # Check Apartment Price
     
     prices = Pull_ListPropertyPrices_RQ.get_all_prices()[str(property_id)]
-    customerPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, guests=(adults+children),
+    customerPrice = Pull_ListPropertyPrices_RQ.calculate_client_price(property_id=property_id, guests=(adults+children),
         date_from=date_from_obj, 
         date_to=date_to_obj,
         refundable=refundable
