@@ -222,7 +222,7 @@ def create_checkout():
     nights = (date_to_obj - date_from_obj).days
 
     # Get Price
-    customerPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, guests=(adults+children),
+    customerPrice = Pull_ListPropertyPrices_RQ.calculate_client_price(property_id=property_id, guests=(adults+children),
         date_from=date_from_obj, 
         date_to=date_to_obj,
         refundable=refundable
@@ -1106,6 +1106,8 @@ def get_booking():
         return jsonify({'error': statusText}), 400
 
     bookingEmail = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["CustomerInfo"]["Email"]
+    rentalsUnitedComments = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["Comments"]
+    rentalsUnitedCommentsJson = json.loads(rentalsUnitedComments)
 
     if email.lower() != bookingEmail.lower():
         return jsonify({'error': statusText}), 420
@@ -1117,7 +1119,7 @@ def get_booking():
         "DateFrom": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("DateFrom"),
         "DateTo": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("DateTo"),
         "ClientPrice": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("Costs", {}).get("ClientPrice"),
-        "SpecialRequest": extract_special_request(jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["Comments"])
+        "SpecialRequest": rentalsUnitedCommentsJson["specialRequest"]
     }
 
     # Add optional fields only if they exist
