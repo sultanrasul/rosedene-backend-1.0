@@ -144,16 +144,39 @@ def verify_price():
 
     date_from_obj = datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"])
     date_to_obj = datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
-    # # Check Apartment Price
-    
-    prices = Pull_ListPropertyPrices_RQ.get_all_prices()[str(property_id)]
-    customerPrice = Pull_ListPropertyPrices_RQ.calculate_client_price(property_id=property_id, guests=(adults+children),
+
+    nights = (date_to_obj - date_from_obj).days
+
+    basePrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, guests=(adults+children),
         date_from=date_from_obj, 
         date_to=date_to_obj,
-        refundable=refundable
     )
 
-    return str(customerPrice)
+    clientPrice = Pull_ListPropertyPrices_RQ.calculate_client_price(basePrice=basePrice, refundable=refundable)
+
+    refundableRateFee = Pull_ListPropertyPrices_RQ.calculate_refundable_rate_fee(basePrice)
+
+    per_night_price = round(basePrice/nights , 2)
+
+    breakdown = []
+
+
+    breakdown.append({
+        "label": f"£{per_night_price} x {nights} nights",
+        "amount": round(basePrice, 2)
+    })
+
+    if refundable:
+        refundable_rate_fee = Pull_ListPropertyPrices_RQ.calculate_refundable_rate_fee(basePrice)
+        breakdown.append({
+            "label": "Refundable rate",
+            "amount": refundable_rate_fee
+        })
+
+    return jsonify({
+        "total": clientPrice,
+        "breakdown": breakdown
+    })
 
 @app.route('/check_calendar', methods=['POST'])
 def check_calendar():
@@ -222,11 +245,13 @@ def create_checkout():
     nights = (date_to_obj - date_from_obj).days
 
     # Get Price
-    customerPrice = Pull_ListPropertyPrices_RQ.calculate_client_price(property_id=property_id, guests=(adults+children),
+    basePrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, guests=(adults+children),
         date_from=date_from_obj, 
         date_to=date_to_obj,
-        refundable=refundable
     )
+    customerPrice = Pull_ListPropertyPrices_RQ.calculate_client_price(basePrice=basePrice, refundable=refundable)
+
+
     if customerPrice == 0:
         return jsonify({'error': 'This apartment is not available for these dates!'}), 420
 
@@ -368,11 +393,7 @@ def webhook():
             date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"]),
         )
 
-        clientPrice = Pull_ListPropertyPrices_RQ.calculate_client_price(property_id=apartment_id, guests=(adults+children),
-            date_from = datetime(day=dateFrom["day"], month=dateFrom["month"], year=dateFrom["year"]),
-            date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"]),
-            refundable=refundable
-        )
+        clientPrice = Pull_ListPropertyPrices_RQ.calculate_client_price(basePrice=ruPrice, refundable=refundable)
     
         booking_data = {
             "adults": adults,
@@ -548,7 +569,7 @@ def webhook():
                                                 <table width="100%">
                                                     <tr>
                                                         <td style="color:#64748b; font-weight:500;">Total Amount</td>
-                                                        <td style="text-align:right; color:#1e293b; font-size:24px; font-weight:700;">£{ruPrice}</td>
+                                                        <td style="text-align:right; color:#1e293b; font-size:24px; font-weight:700;">£{clientPrice}</td>
                                                     </tr>
                                                 </table>
                                             </td>
