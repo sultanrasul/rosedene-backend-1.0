@@ -154,8 +154,6 @@ def verify_price():
 
     clientPrice = Pull_ListPropertyPrices_RQ.calculate_client_price(basePrice=basePrice, refundable=refundable)
 
-    refundableRateFee = Pull_ListPropertyPrices_RQ.calculate_refundable_rate_fee(basePrice)
-
     per_night_price = round(basePrice/nights , 2)
 
     breakdown = []
@@ -1118,6 +1116,9 @@ def get_booking():
     jsonResponse = reservation.get_details(response.text)
     statusCode = int(jsonResponse["Pull_GetReservationByID_RS"]["Status"]["@ID"])
     statusText = jsonResponse["Pull_GetReservationByID_RS"]["Status"]["#text"]
+
+
+
     
     if (statusCode != 0):
 
@@ -1127,20 +1128,51 @@ def get_booking():
         return jsonify({'error': statusText}), 400
 
     bookingEmail = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["CustomerInfo"]["Email"]
+    dateFrom = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("DateFrom")
+    dateTo = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("DateTo")
     rentalsUnitedComments = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["Comments"]
     rentalsUnitedCommentsJson = json.loads(rentalsUnitedComments)
+    refundable = rentalsUnitedCommentsJson["refundable"]
+
+    date_from_obj = datetime.strptime(dateFrom, "%Y-%m-%d")
+    date_to_obj = datetime.strptime(dateTo, "%Y-%m-%d")
+
+    nights = (date_to_obj - date_from_obj).days
+
+
+    breakdown = []
+
+    # need to figure out the base price but the issue is that if they go to this booking like 2 months from now it will still try 
+    # and calculate the price they paid based on the prices json file which might be different best way is database just saying
+
+    basePrice = float(jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("Costs", {}).get("RUPrice"))
+    per_night_price = round(basePrice/nights , 2)
+
+
+    breakdown.append({
+        "label": f"£{per_night_price} x {nights} nights",
+        "amount": round(basePrice, 2)
+    })
+
+    if refundable:
+        refundable_rate_fee = Pull_ListPropertyPrices_RQ.calculate_refundable_rate_fee(basePrice)
+        breakdown.append({
+            "label": "Refundable rate",
+            "amount": refundable_rate_fee
+        })
 
     if email.lower() != bookingEmail.lower():
         return jsonify({'error': statusText}), 420
 
-
     reservation_data = {
         "ReservationID": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["ReservationID"],
         "Apartment": apartment_ids.get(int(jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("PropertyID", -1)), "Unknown Apartment"),
-        "DateFrom": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("DateFrom"),
-        "DateTo": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("DateTo"),
+        "DateFrom": dateFrom,
+        "DateTo": dateTo,
         "ClientPrice": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("Costs", {}).get("ClientPrice"),
-        "SpecialRequest": rentalsUnitedCommentsJson["specialRequest"]
+        "refundable": refundable,
+        "SpecialRequest": rentalsUnitedCommentsJson["specialRequest"],
+        "breakdown": breakdown
     }
 
     # Add optional fields only if they exist
