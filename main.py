@@ -450,6 +450,38 @@ def webhook():
                 }
         )
 
+        # Breaking down the breakdown of what they paid for 
+
+        breakdown = []
+
+        # need to figure out the base price but the issue is that if they go to this booking like 2 months from now it will still try 
+        # and calculate the price they paid based on the prices json file which might be different best way is database just saying
+        per_night_price = round(ruPrice/nights , 2)
+
+        breakdown.append({
+            "label": f"£{per_night_price} x {nights} nights",
+            "amount": round(ruPrice, 2)
+        })
+
+        if refundable:
+            refundable_rate_fee = Pull_ListPropertyPrices_RQ.calculate_refundable_rate_fee(ruPrice)
+            breakdown.append({
+                "label": "Refundable rate",
+                "amount": refundable_rate_fee
+            })
+
+        breakdown_html_rows = ""
+
+        for item in breakdown:
+            label = item["label"]
+            amount = f"£{item['amount']:.2f}"
+            breakdown_html_rows += f"""
+                <tr>
+                    <td style="color:#64748b;">{label}</td>
+                    <td style="text-align:right; color:#1e293b;">{amount}</td>
+                </tr>
+            """
+
         ###### SEND BOOKING CONFIRMATION ######
 
         message = Mail(
@@ -561,18 +593,41 @@ def webhook():
 
                                     <!-- Details Card -->
                                     <table width="100%" style="background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0; padding:20px;">
+
+                                        <!-- Price Breakdown -->
+                                        <tr>
+                                            <td style="padding-bottom:10px;">
+                                                <table width="100%">
+                                                    {breakdown_html_rows}
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        
+                                        <tr>
+                                        <td colspan="2">
+                                            <div style="height:1px; background-color:#e2e8f0; margin:12px 0;"></div>
+                                        </td>
+                                        </tr>
+                                        
                                         <!-- Total Amount -->
                                         <tr>
                                             <td style="padding-bottom:15px;">
                                                 <table width="100%">
                                                     <tr>
                                                         <td style="color:#64748b; font-weight:500;">Total Amount</td>
-                                                        <td style="text-align:right; color:#1e293b; font-size:24px; font-weight:700;">£{clientPrice}</td>
+                                                        <td style="text-align:right; color:#1e293b; font-size:24px; font-weight:700;">{clientPrice}</td>
                                                     </tr>
                                                 </table>
                                             </td>
                                         </tr>
+                                        
+                                        <tr>
+                                        <td colspan="2">
+                                            <div style="height:1px; background-color:#e2e8f0; margin:12px 0;"></div>
+                                        </td>
+                                        </tr>
 
+                                        
                                         <!-- Reference Number -->
                                         <tr><td class="data-row">
                                             <table width="100%">
