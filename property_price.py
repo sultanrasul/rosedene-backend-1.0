@@ -118,6 +118,7 @@ class Pull_ListPropertyPrices_RQ:
 
     @staticmethod
     def calculate_refundable_rate_fee(total_price):
+        total_price = float(total_price)  # Convert to float
         refundableRate = round(total_price * 0.0575, 2) # times by 5.75% for the refundable rate
 
         return refundableRate
