@@ -125,7 +125,7 @@ class Pull_ListPropertyPrices_RQ:
 
     @staticmethod
     def calculate_client_price(basePrice,  refundable):
-
+        print(type(refundable))
         if refundable:
             refundableRateFee = Pull_ListPropertyPrices_RQ.calculate_refundable_rate_fee(basePrice)
             basePrice+=refundableRateFee

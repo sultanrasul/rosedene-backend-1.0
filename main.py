@@ -1164,6 +1164,7 @@ def get_booking():
 
     response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
     jsonResponse = reservation.get_details(response.text)
+    print(jsonResponse)
     statusCode = int(jsonResponse["Pull_GetReservationByID_RS"]["Status"]["@ID"])
     statusText = jsonResponse["Pull_GetReservationByID_RS"]["Status"]["#text"]
 
@@ -1182,7 +1183,7 @@ def get_booking():
     dateTo = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("DateTo")
     rentalsUnitedComments = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["Comments"]
     rentalsUnitedCommentsJson = json.loads(rentalsUnitedComments)
-    refundable = rentalsUnitedCommentsJson["refundable"]
+    refundable = rentalsUnitedCommentsJson["refundable"].lower() == "true"
 
     date_from_obj = datetime.strptime(dateFrom, "%Y-%m-%d")
     date_to_obj = datetime.strptime(dateTo, "%Y-%m-%d")
