@@ -364,7 +364,7 @@ def webhook():
         adults = int(meta_data["adults"])
         apartment_id = int(meta_data["apartment_id"])
         apartment_name = meta_data["apartment_name"]
-        refundable = meta_data["refundable"]
+        refundable = meta_data["refundable"].lower() == "true"
         children = int(meta_data["children"])
         childrenAges = []
         if children > 0:
@@ -603,11 +603,6 @@ def webhook():
                                             </td>
                                         </tr>
                                         
-                                        <tr>
-                                        <td colspan="2">
-                                            <div style="height:1px; background-color:#e2e8f0; margin:12px 0;"></div>
-                                        </td>
-                                        </tr>
                                         
                                         <!-- Total Amount -->
                                         <tr>
