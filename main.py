@@ -5,6 +5,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import stripe.webhook
 from add_booking import Push_PutConfirmedReservationMulti_RQ
+from cancel_booking import Push_CancelReservation_RQ
 from get_booking import Pull_GetReservationByID_RQ
 from location_check import Pull_ListPropertiesBlocks_RQ
 from property_check import Pull_ListPropertyAvailabilityCalendar_RQ
@@ -328,6 +329,98 @@ def update_guest_info():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/cancel_booking', methods=['POST'])
+def cancel_booking():
+    try:
+        data = request.json
+        booking_ref = data.get('booking_ref')
+        email = data.get('email')
+
+        if not booking_ref or not email:
+            return jsonify({'error': 'Missing booking_ref or email'}), 400
+
+        # Get booking details
+        reservation = Pull_GetReservationByID_RQ(username, password, booking_ref)
+        response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
+        booking_data = reservation.get_details(response.text)
+
+        status_info = booking_data["Pull_GetReservationByID_RS"]["Status"]
+        status_code = int(status_info["@ID"])
+        status_text = status_info["#text"]
+
+        if status_code != 0:
+            if status_code == 28:
+                return jsonify({'error': status_text}), 420
+            return jsonify({'error': status_text}), 400
+
+        # Extract data
+        reservation_data = booking_data["Pull_GetReservationByID_RS"]["Reservation"]
+        rentalsUnitedCommentsJson = json.loads(reservation_data["Comments"])
+        bookingEmail = reservation_data["CustomerInfo"]["Email"]
+
+        if email.lower() != bookingEmail.lower():
+            return jsonify({'error': 'Email does not match booking'}), 420
+
+        refundable = rentalsUnitedCommentsJson.get("refundable", False)
+        paymentIntentId = rentalsUnitedCommentsJson.get("paymentIntentId")
+
+        # Step 1: Cancel reservation with Rentals United
+        try:
+            cancel = Push_CancelReservation_RQ(username, password, booking_ref, cancel_type_id=2)
+            cancel_response = requests.post(api_endpoint, data=cancel.serialize_request(), headers={"Content-Type": "application/xml"})
+            cancel_data = reservation.get_details(cancel_response.text)
+
+            cancel_status = int(cancel_data["Push_CancelReservation_RS"]["Status"]["@ID"])
+            cancel_text = cancel_data["Push_CancelReservation_RS"]["Status"]["#text"]
+
+            if cancel_status != 0:
+                return jsonify({'error': f'Cancel failed: {cancel_text}'}), 500
+        except Exception as e:
+            return jsonify({'error': f'Failed to cancel reservation: {str(e)}'}), 500
+
+        # Step 2: If refundable, attempt refund
+        refund_successful = False
+        if refundable:
+            try:
+                payment_intent = stripe.PaymentIntent.retrieve(paymentIntentId, expand=["charges"])
+
+                charge_id = payment_intent.latest_charge
+                if not charge_id:
+                    raise Exception("No charge found for PaymentIntent")
+
+                refund = stripe.Refund.create(
+                    charge=charge_id,
+                    reason='requested_by_customer'
+                )
+
+                refund_successful = refund.status == "succeeded"
+                if not refund_successful:
+                    raise Exception("Refund status not succeeded")
+
+            except Exception as e:
+                return jsonify({
+                    'error': f'Reservation cancelled, but refund failed: {str(e)}',
+                    'cancelled': True,
+                    'refunded': False
+                }), 207  # Multi-Status: part success, part fail
+
+        # Final response depending on refund status
+        if refundable:
+            return jsonify({
+                'message': 'Booking cancelled and refunded successfully',
+                'cancelled': True,
+                'refunded': True
+            })
+        else:
+            return jsonify({
+                'message': 'Booking cancelled (non-refundable)',
+                'cancelled': True,
+                'refunded': False
+            })
+
+    except Exception as e:
+        return jsonify({'error': f'Unexpected server error: {str(e)}'}), 500
 
 
 @app.route('/webhook', methods=['POST'])
@@ -1154,17 +1247,17 @@ def get_booking():
     booking_ref = request.json.get('booking_ref')
     email = request.json.get('email')
 
-    cache_key = f"booking:{booking_ref}:{email.lower()}"
-    cached_response = cache.get(cache_key)
+    # can not cache because when canceling a booking I have to check to see if the data is been updated to canceled 
+    # cache_key = f"booking:{booking_ref}:{email.lower()}"
+    # cached_response = cache.get(cache_key)
 
-    if cached_response:
-        return cached_response 
+    # if cached_response:
+    #     return cached_response 
 
     reservation = Pull_GetReservationByID_RQ(username, password, booking_ref)
 
     response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
     jsonResponse = reservation.get_details(response.text)
-    print(jsonResponse)
     statusCode = int(jsonResponse["Pull_GetReservationByID_RS"]["Status"]["@ID"])
     statusText = jsonResponse["Pull_GetReservationByID_RS"]["Status"]["#text"]
 
@@ -1183,7 +1276,9 @@ def get_booking():
     dateTo = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("DateTo")
     rentalsUnitedComments = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["Comments"]
     rentalsUnitedCommentsJson = json.loads(rentalsUnitedComments)
-    refundable = rentalsUnitedCommentsJson["refundable"].lower() == "true"
+    refundable = rentalsUnitedCommentsJson["refundable"]
+    reservationStatusID = int(jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StatusID"])
+    
 
     date_from_obj = datetime.strptime(dateFrom, "%Y-%m-%d")
     date_to_obj = datetime.strptime(dateTo, "%Y-%m-%d")
@@ -1216,6 +1311,7 @@ def get_booking():
         return jsonify({'error': statusText}), 420
 
     reservation_data = {
+        "reservationStatusID": reservationStatusID,
         "ReservationID": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["ReservationID"],
         "Apartment": apartment_ids.get(int(jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("PropertyID", -1)), "Unknown Apartment"),
         "DateFrom": dateFrom,
@@ -1223,7 +1319,7 @@ def get_booking():
         "ClientPrice": jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("Costs", {}).get("ClientPrice"),
         "refundable": refundable,
         "SpecialRequest": rentalsUnitedCommentsJson["specialRequest"],
-        "breakdown": breakdown
+        "breakdown": breakdown,
     }
 
     # Add optional fields only if they exist
@@ -1235,7 +1331,7 @@ def get_booking():
 
     response_data = {'reservation_data': reservation_data}
 
-    cache.set(cache_key, response_data, timeout=300)  # Store in cache
+    # cache.set(cache_key, response_data, timeout=300)  # Store in cache
 
     return jsonify(response_data)
 
