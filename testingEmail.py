@@ -26,7 +26,7 @@ email_sender = create_email(
     refundable=False,
     email="sultanrasul5@gmail.com",
     specialRequests="",
-    cancel=True
+    cancel=False
 )
 
 email_sender.send_email(os.getenv('email'))
