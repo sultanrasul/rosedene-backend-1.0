@@ -23,6 +23,8 @@ import json
 
 import os
 from dotenv import load_dotenv
+
+from email_sender import create_email
 load_dotenv()
 
 
@@ -344,7 +346,7 @@ def cancel_booking():
         reservation = Pull_GetReservationByID_RQ(username, password, booking_ref)
         response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
         booking_data = reservation.get_details(response.text)
-
+    
         status_info = booking_data["Pull_GetReservationByID_RS"]["Status"]
         status_code = int(status_info["@ID"])
         status_text = status_info["#text"]
@@ -356,14 +358,44 @@ def cancel_booking():
 
         # Extract data
         reservation_data = booking_data["Pull_GetReservationByID_RS"]["Reservation"]
+        reservationID = reservation_data["ReservationID"]
         rentalsUnitedCommentsJson = json.loads(reservation_data["Comments"])
-        bookingEmail = reservation_data["CustomerInfo"]["Email"]
+
+
+        # Customer Info
+        customer_info = reservation_data["CustomerInfo"]
+        bookingEmail = customer_info["Email"]
+        name = customer_info["Name"]
+        phone = customer_info["Phone"]
+
+        # Booking Info
+        booking_info = reservation_data["StayInfos"]["StayInfo"]
+        dateFrom = booking_info.get("DateFrom")
+        dateTo = booking_info.get("DateTo")
+
+        date_from_obj = datetime.strptime(dateFrom, "%Y-%m-%d")
+        date_to_obj = datetime.strptime(dateTo, "%Y-%m-%d")
+        nights = (date_to_obj - date_from_obj).days
+
+        apartmentID = int(booking_info.get("PropertyID"))
+
+        # Guest Info
+        guest_info = reservation_data["GuestDetailsInfo"]
+        adults = int(guest_info["NumberOfAdults"])
+        children = int(guest_info["NumberOfChildren"])
+
+        
+
+
+
 
         if email.lower() != bookingEmail.lower():
             return jsonify({'error': 'Email does not match booking'}), 420
 
         refundable = rentalsUnitedCommentsJson.get("refundable", False)
         paymentIntentId = rentalsUnitedCommentsJson.get("paymentIntentId")
+
+
 
         # Step 1: Cancel reservation with Rentals United
         try:
@@ -388,7 +420,7 @@ def cancel_booking():
                 charge_id = payment_intent.latest_charge
                 if not charge_id:
                     raise Exception("No charge found for PaymentIntent")
-
+                
                 refund = stripe.Refund.create(
                     charge=charge_id,
                     reason='requested_by_customer'
@@ -404,6 +436,27 @@ def cancel_booking():
                     'cancelled': True,
                     'refunded': False
                 }), 207  # Multi-Status: part success, part fail
+
+        email_sender = create_email(
+            name=name,
+            breakdown_html_rows=breakdown_html_rows,
+            clientPrice=clientPrice,
+            booking_reference=reservationID,
+            date_from=date_from_obj,
+            date_to=date_to_obj,
+            apartmentName=apartment_ids[apartmentID],
+            phone=phone,
+            adults=adults,
+            children=children,
+            childrenAges=childrenAges,
+            nights=nights,
+            refundable=refundable,
+            email=email,
+            specialRequests=special_requests,
+            cancel=False
+        )
+
+        email_sender.send_email(os.getenv('email'))
 
         # Final response depending on refund status
         if refundable:
@@ -464,7 +517,7 @@ def webhook():
             childrenAges = meta_data["children_ages"].split(",")
         date_from = meta_data["date_from"]
         date_to = meta_data["date_to"]
-        special_requests = meta_data["special_requests"]
+        special_requests = meta_data.get("special_requests", "")
         nights = int(meta_data["nights"])
 
     
@@ -565,270 +618,48 @@ def webhook():
 
         breakdown_html_rows = ""
 
-        for item in breakdown:
+        for index, item in enumerate(breakdown):
             label = item["label"]
             amount = f"£{item['amount']:.2f}"
+
             breakdown_html_rows += f"""
                 <tr>
-                    <td style="color:#64748b;">{label}</td>
-                    <td style="text-align:right; color:#1e293b;">{amount}</td>
+                    <td style="color:#4b5563; font-size:15px;">{label}</td>
+                    <td align="right" style="color:#374151; font-size:16px;">{amount}</td>
                 </tr>
             """
 
+            # Add spacer row except after the last item
+            if index < len(breakdown) - 1:
+                breakdown_html_rows += """
+                <tr>
+                    <td colspan="2" height="15"></td>
+                </tr>
+                """
+
         ###### SEND BOOKING CONFIRMATION ######
 
-        message = Mail(
-            from_email='booking@rosedenedirect.com',
-            to_emails=email,
-            subject=f'Confirmation of your reservation: Rosedene Highland House No.{booking_reference}',
-            html_content=f'''
-            <!DOCTYPE html>
-            <html>
-            <head>
-            <style>
-                * {{
-                    font-family: "Calibri", sans-serif;
-                }}
-                /* Reset styles for email clients */
-                .main-table {{ width: 100% !important; max-width: 600px !important; margin: 0 auto !important; }}
-                img {{ border: 0; line-height: 100%; max-width: 100% !important; }}
-                .mobile-stack {{ display: block !important; width: 100% !important; }}
-                .separator {{ border-left: 1px solid #cccccc; height: 40px; }}
-                .data-row {{ padding: 12px 0; border-top: 1px solid #e2e8f0; }}
-                
-                @media screen and (max-width: 600px) {{
-                    .main-table, .mobile-stack {{ width: 100% !important; }}
-                    td.mobile-stack {{ display: block !important; width: 100% !important; }}
-                    .desktop-hide {{ display: none !important; }}
-                    .mobile-center {{ text-align: center !important; }}
-                    .mobile-pad {{ padding: 10px !important; }}
-                    .mobile-text {{ font-size: 14px !important; }}
-                    .mobile-header {{ font-size: 20px !important; }}
-                    img {{ height: auto !important; max-height: 300px !important; }}
-                }}
-            </style>
-            </head>
-            <body style="margin:0; padding:20px 0; background:#f5f5f5;">
+        email_sender = create_email(
+            name=name,
+            breakdown_html_rows=breakdown_html_rows,
+            clientPrice=clientPrice,
+            booking_reference=booking_reference,
+            date_from=date_from,
+            date_to=date_to,
+            apartmentName=apartment_ids[apartment_id],
+            phone=phone,
+            adults=adults,
+            children=children,
+            childrenAges=childrenAges,
+            nights=nights,
+            refundable=refundable,
+            email=email,
+            specialRequests=special_requests,
+            cancel=False
+        )
 
-            <!-- Wrapper Table -->
-            <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                    <td align="center">
-                        <!-- Main Container -->
-                        <table class="main-table" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
-                            <!-- Email Details Section -->
-                            <tr>
-                                <td style="padding:10px; text-align:center;">
-                                    <p style="color:#2d3748; font-size:12px; margin:8px 0 30px;text-align:center;">
-                                        IMPORTANT: This confirmation email has been generated automatically, so please do not reply to this address. To view or cancel your reservation, please go to the "Manage Booking" section of our website and quote the confirmation or reservation number shown in this email.
-                                    </p>
-                                    <img src="https://rosedenedirect.com/logo.png" alt="Rosedene Logo" style="width:90%; max-width:200px; margin:0 auto 30px; display:block;">
-                                    
-                                    <!-- Email Content -->
-                                    <table width="100%" style="border:1px solid #e2e8f0; border-radius:12px; background:#ffffff; padding:20px; text-align:left;margin-bottom:90px;">
-                                        <tr>
-                                            <td>
-                                                <p>
-                                                    Dear {name},
-                                                </p>
-                                                <p>
-                                                    Thank you for choosing 
-                                                    <span style="color:#C09A5B;font-weight:bold;">Rosedene Highland House</span>
-                                                    for your next stay in 
-                                                    <span style="color:#C09A5B;font-weight:bold;">Inverness</span>.
-                                                </p>
-                                                <p>
-                                                    Please see below for details of your reservation.
-                                                </p>
-                                                <p>
-                                                    We hope you enjoy your stay!
-                                                </p>
-                                                <p>
-                                                    Kind regards,<br>
-                                                    ALL – Rosedene Highland House Customer Service
-                                                </p>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                </td>
-                            </tr>
+        email_sender.send_email(os.getenv('email'))
 
-                            <!-- Green Checkmark Section -->
-                            <tr>
-                                <td style="padding:10px; text-align:center;">
-                                    <table width="100%" style="margin:-0px auto 0;">
-                                        <tr>
-                                            <td align="center">
-                                                <div style="width:80px; height:80px; background:#ffffff; border-radius:50%;">
-                                                    <img src="https://cdn-icons-png.flaticon.com/512/5610/5610944.png" alt="Payment Successful" style="width:100%; height:auto; display:block;">
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                </td>
-                            </tr>
-
-                            <!-- Booking Details Section -->
-                            <tr>
-                                <td style="padding:10px; border-radius:12px;">
-                                    <table width="100%">
-                                        <tr>
-                                            <td style="text-align:center; padding-bottom:20px;">
-                                                <h1 style="color:#C09A5B; font-size:32px; margin:0;padding-top:0px;">
-                                                    Payment Successful!
-                                                </h1>
-                                                <p style="color:#666666; font-size:16px; margin:8px 0 0;">
-                                                    Your reservation is confirmed
-                                                </p>
-                                            </td>
-                                        </tr>
-                                    </table>
-
-                                    <!-- Details Card -->
-                                    <table width="100%" style="background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0; padding:20px;">
-
-                                        <!-- Price Breakdown -->
-                                        <tr>
-                                            <td style="padding-bottom:10px;">
-                                                <table width="100%">
-                                                    {breakdown_html_rows}
-                                                </table>
-                                            </td>
-                                        </tr>
-                                        
-                                        
-                                        <!-- Total Amount -->
-                                        <tr>
-                                            <td style="padding-bottom:15px;">
-                                                <table width="100%">
-                                                    <tr>
-                                                        <td style="color:#64748b; font-weight:500;">Total Amount</td>
-                                                        <td style="text-align:right; color:#1e293b; font-size:24px; font-weight:700;">{clientPrice}</td>
-                                                    </tr>
-                                                </table>
-                                            </td>
-                                        </tr>
-                                        
-                                        <tr>
-                                        <td colspan="2">
-                                            <div style="height:1px; background-color:#e2e8f0; margin:12px 0;"></div>
-                                        </td>
-                                        </tr>
-
-                                        
-                                        <!-- Reference Number -->
-                                        <tr><td class="data-row">
-                                            <table width="100%">
-                                                <tr>
-                                                    <td style="color:#64748b;">Reference Number</td>
-                                                    <td style="text-align:right; color:#1e293b;">{booking_reference}</td>
-                                                </tr>
-                                            </table>
-                                        </td></tr>
-
-                                        <!-- Apartment -->
-                                        <tr><td class="data-row">
-                                            <table width="100%">
-                                                <tr>
-                                                    <td style="color:#64748b;">Apartment</td>
-                                                    <td style="text-align:right; color:#1e293b;">{apartment_ids[apartment_id]}</td>
-                                                </tr>
-                                            </table>
-                                        </td></tr>
-
-                                        <!-- Guest Info -->
-                                        <tr><td class="data-row">
-                                            <table width="100%">
-                                                <tr>
-                                                    <td style="color:#64748b;">Guest Name</td>
-                                                    <td style="text-align:right; color:#1e293b;">{name}</td>
-                                                </tr>
-                                                <tr><td colspan="2" style="padding-top:8px;"></td></tr>
-                                                <tr>
-                                                    <td style="color:#64748b;">Email</td>
-                                                    <td style="text-align:right; color:#1e293b;">{email}</td>
-                                                </tr>
-                                                <tr><td colspan="2" style="padding-top:8px;"></td></tr>
-                                                <tr>
-                                                    <td style="color:#64748b;">Phone</td>
-                                                    <td style="text-align:right; color:#1e293b;">{phone}</td>
-                                                </tr>
-                                            </table>
-                                        </td></tr>
-
-                                        <!-- Dates -->
-                                        <tr><td class="data-row">
-                                            <table width="100%">
-                                                <tr>
-                                                    <td style="width:50%;">
-                                                        <div style="color:#64748b;">Check-in</div>
-                                                        <div style="color:#1e293b; font-weight:500;">{date_from}</div>
-                                                    </td>
-                                                    <td style="width:0%; text-align:center;">
-                                                        <div class="separator"></div>
-                                                    </td>
-                                                    <td style="width:50%;text-align: right;">
-                                                        <div style="color:#64748b;">Check-out</div>
-                                                        <div style="color:#1e293b; font-weight:500;">{date_to}</div>
-                                                    </td>
-                                                </tr>
-                                            </table>
-                                        </td></tr>
-
-                                        <!-- Guest Details -->
-                                        <tr><td class="data-row">
-                                                <table width="100%">
-                                                    <tr>
-                                                        <td style="width:33%; text-align: left;">
-                                                            <div style="color:#64748b;">Adults</div>
-                                                            <div style="color:#1e293b; font-weight:500;">{adults}</div>
-                                                        </td>
-                                                        <td style="width:33%; text-align: center;">
-                                                            <div style="color:#64748b;">Children</div>
-                                                            <div style="color:#1e293b; font-weight:500;">{children}</div>
-                                                        </td>
-                                                        <td style="width:33%; text-align: right;">
-                                                            <div style="color:#64748b;">Nights</div>
-                                                            <div style="color:#1e293b; font-weight:500;">{nights}</div>
-                                                        </td>
-                                                    </tr>
-                                                </table>
-                                            </td></tr>
-                                        
-                                        <!-- Children Ages (Conditinal) -->
-                                        {
-                                            f"""
-                                                <tr>
-                                                    <td>
-                                                        <table width="100%">
-                                                            <tr>
-                                                                <td style="color:#64748b;">Children Ages</td>
-                                                                <td style="text-align:right; color:#1e293b;">{','.join(childrenAges)}</td>
-                                                            </tr>
-                                                        </table>
-                                                    </td>
-                                                </tr>
-                                            """ if children != 0 else ""
-                                        }
-                                            
-                                    </table>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
-            </body>
-            </html>
-            ''')
-        try:
-            sg = SendGridAPIClient(os.getenv('email'))
-            response = sg.send(message)
-            print(response.status_code)
-            print(response.body)
-            print(response.headers)
-        except Exception as e:
-            traceback.print_exc()  # full error trace
 
         ###### SEND BOOKING CONFIRMATION ######
 
@@ -1276,7 +1107,10 @@ def get_booking():
     dateTo = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StayInfos"]["StayInfo"].get("DateTo")
     rentalsUnitedComments = jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["Comments"]
     rentalsUnitedCommentsJson = json.loads(rentalsUnitedComments)
-    refundable = rentalsUnitedCommentsJson["refundable"]
+    refundable = bool(rentalsUnitedCommentsJson["refundable"])
+
+    # 1 - Confirmed
+    # 2 - Canceled
     reservationStatusID = int(jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StatusID"])
     
 
