@@ -340,7 +340,7 @@ class create_email:
                                                     <td style="padding-left: 15px;">
                                                         <p style="color:#374151; font-size:14px; margin:0 0 5px 0;">Refundable Booking</p>
                                                         <p style="color:#6b7280; font-size:12px; margin:0;">
-                                                            You are eligible for a refund if canceled 2 weeks before your check-in date.
+                                                            {'You are eligible for a refund if canceled 2 weeks before your check-in date.' if self.refundable else 'This booking cannot be refunded after cancellation.'}
                                                         </p>
                                                     </td>
                                                 </tr>
