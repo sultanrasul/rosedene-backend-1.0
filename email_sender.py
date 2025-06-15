@@ -22,10 +22,15 @@ class create_email:
         self.cancel = cancel
 
     def send_email(self, api_key):
+        if self.cancel:
+            subject_text = f"Your reservation has been cancelled: Rosedene Highland House No.{self.booking_reference}"
+        else:
+            subject_text = f"Confirmation of your reservation: Rosedene Highland House No.{self.booking_reference}"
+
         message = Mail(
             from_email='booking@rosedenedirect.com',
             to_emails=self.email,
-            subject=f'Confirmation of your reservation: Rosedene Highland House No.{self.booking_reference}',
+            subject=subject_text,
             html_content=self.create_html())
         try:
             sg = SendGridAPIClient(api_key)
