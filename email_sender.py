@@ -89,15 +89,26 @@ class create_email:
             <tr>
             <td style="padding: 40px 0;">
                 <table width="100%" style="text-align: center;">
+                <!-- Checkmark Icon -->
                 <tr>
-                    <td>
-                    <div style="display: inline-block; background-color: #ecfdf5; border-radius: 9999px; padding: 12px; box-shadow: 0 0 12px rgba(0,0,0,0.1);">
-                        <div style="width: 64px; height: 64px; background-color: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
-                        <img src="https://rosedenedirect.com/email/check-green.png" width="28" height="28" alt="Success" />
-                        </div>
-                    </div>
+                    <td align="center" style="padding-top:0px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:0px;">
+                        <tr>
+                        <td align="center" style="width:80px; height:80px; background:#dcfce7; border-radius:50%; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                            <table role="presentation" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td align="center" style="width:64px; height:64px; background:#22c55e; border-radius:50%;">
+                                <img src="https://rosedenedirect.com/email/check.png" width="40" height="40" alt="" style="display:block;">
+                                </td>
+                            </tr>
+                            </table>
+                        </td>
+                        </tr>
+                    </table>
                     </td>
                 </tr>
+
+                <!-- Title and Message -->
                 <tr>
                     <td style="padding-top: 20px;">
                     <h1 style="font-size: 28px; color: #047857; font-weight: bold; margin: 0;">Payment Successful</h1>
@@ -109,6 +120,8 @@ class create_email:
                 </table>
             </td>
             </tr>
+
+
         """
 
         special_requests_html = f"""
@@ -345,7 +358,7 @@ class create_email:
                                             <td valign="top" style="padding-bottom: 16px">
                                             <div style="display: inline-block; vertical-align: middle; margin-right: 12px">
                                                 <div style="background:#ffffff; border-radius:12px; padding:12px; display:inline-block; box-shadow:0 4px 6px rgba(0,0,0,0.05); color:#4f46e5;">
-                                                <img src="https://rosedenedirect.com/email/calendar.png" alt>
+                                                <img src="https://rosedenedirect.com/email/calendar.png" width="32" height="32" alt>
                                                 </div>
                                             </div>
                                             <div style="display: inline-block; vertical-align: middle">
@@ -362,7 +375,7 @@ class create_email:
                                             <td valign="top" style="padding-bottom: 16px">
                                             <div style="display: inline-block; vertical-align: middle; margin-right: 12px">
                                                 <div style="background:#ffffff; border-radius:12px; padding:12px; display:inline-block; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
-                                                <img src="https://rosedenedirect.com/email/calendar.png" alt>
+                                                <img src="https://rosedenedirect.com/email/calendar.png" width="32" height="32" alt>
                                                 </div>
                                             </div>
                                             <div style="display: inline-block; vertical-align: middle">
@@ -398,7 +411,7 @@ class create_email:
                                             <td valign="top">
                                                 <div style="display: inline-block; vertical-align: middle; margin-right: 12px">
                                                     <div style="background:#ffffff; border-radius:12px; padding:12px; display:inline-block; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
-                                                    <img src="https://rosedenedirect.com/email/user-round.png" alt>
+                                                    <img src="https://rosedenedirect.com/email/user-round.png" width="32" height="32" alt>
                                                     </div>
                                                 </div>
                                                 <div style="display: inline-block; vertical-align: middle">
@@ -417,7 +430,7 @@ class create_email:
                                             <td valign="top">
                                                 <div style="display: inline-block; vertical-align: middle; margin-right: 12px">
                                                     <div style="background:#ffffff; border-radius:12px; padding:12px; display:inline-block; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
-                                                    <img src="https://rosedenedirect.com/email/user-round.png" alt>
+                                                    <img src="https://rosedenedirect.com/email/user-round.png" width="32" height="32" alt>
                                                     </div>
                                                 </div>
                                                 <div style="display: inline-block; vertical-align: middle">
