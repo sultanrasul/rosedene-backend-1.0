@@ -35,9 +35,6 @@ class create_email:
         try:
             sg = SendGridAPIClient(api_key)
             response = sg.send(message)
-            print(response.status_code)
-            print(response.body)
-            print(response.headers)
         except Exception as e:
             traceback.print_exc()  # full error trace
 
