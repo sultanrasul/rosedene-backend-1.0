@@ -88,7 +88,7 @@ username = os.getenv('username')
 password = os.getenv('password')
 api_endpoint = "https://new.rentalsunited.com/api/handler.ashx"
 
-# Check Blocked Apartments
+# This gives back the availability of all properties within the users date range
 @app.route('/blocked_apartments', methods=['POST'])
 def check_blocked_apartments():
     date_from = request.json['date_from']
@@ -179,6 +179,7 @@ def verify_price():
         "breakdown": breakdown
     })
 
+# This gives back the specific apartment availability for the next 3 years
 @app.route('/check_calendar', methods=['POST'])
 def check_calendar():
 
@@ -444,6 +445,7 @@ def cancel_booking():
             except Exception as e:
                 return jsonify({'error': f'Refund failed: {str(e)} — booking not cancelled'}), 500
 
+        # Step 3: Send Cancelation Email
         ruPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=apartmentID, guests=(adults+children),
             date_from = date_from_obj,
             date_to= date_to_obj,
@@ -627,6 +629,9 @@ def webhook():
 
             stripe.PaymentIntent.cancel(payment_intent_id, cancellation_reason="abandoned")
             return jsonify({'error': status_code}), 420
+        else:
+            stripe.PaymentIntent.capture(payment_intent_id)
+
 
         booking_reference = jsonResponse["Push_PutConfirmedReservationMulti_RS"]["ReservationID"]
     
@@ -705,7 +710,6 @@ def webhook():
 
         ###### SEND BOOKING CONFIRMATION ######
 
-        stripe.PaymentIntent.capture(payment_intent_id)
 
         # ... handle other event types
     else:
