@@ -1,6 +1,7 @@
 from sendgrid.helpers.mail import Mail
 from sendgrid import SendGridAPIClient
 import traceback
+from mailersend import emails
 
 class create_email:
     def __init__(self, name, breakdown_html_rows, clientPrice, booking_reference , date_from, date_to,apartmentName, phone, adults, children, childrenAges, nights, refundable, email, specialRequests, cancel):
@@ -22,8 +23,49 @@ class create_email:
         self.cancel = cancel
 
     def send_email(self, api_key):
+        mailer = emails.NewEmail(api_key)
+        mail_body = {}
+
         if self.cancel:
-            subject_text = f"Your reservation has been cancelled: Rosedene Highland House No.{self.booking_reference}"
+            subject_text = f"Reservation has been cancelled: Rosedene Highland House No.{self.booking_reference}"
+        else:
+            subject_text = f"Confirmation of your reservation: Rosedene Highland House No.{self.booking_reference}"
+
+        # FROM
+        mail_from = {
+            "name": "Rosedene Highland House",
+            "email": "booking@rosedenedirect.com"
+        }
+
+        # TO
+        recipients = [{
+            "name": self.name,
+            "email": self.email
+        }]
+
+        # REPLY-TO (optional, modify as needed)
+        # reply_to = [{
+        #     "name": "Rosedene Support",
+        #     "email": "reply@rosedenedirect.com"
+        # }]
+
+        try:
+            mailer.set_mail_from(mail_from, mail_body)
+            mailer.set_mail_to(recipients, mail_body)
+            mailer.set_subject(subject_text, mail_body)
+            mailer.set_html_content(self.create_html(), mail_body)
+            mailer.set_plaintext_content("Your reservation details are attached in HTML format.", mail_body)
+            # mailer.set_reply_to(reply_to, mail_body)
+
+            response = mailer.send(mail_body)
+            print(response)  # for debugging/logging
+        except Exception as e:
+            traceback.print_exc()
+    
+    # This is used to send sendgrid emails but right now I am not using them because the free trial does not allow for outlook emails
+    def send_email_sendgrid(self, api_key):
+        if self.cancel:
+            subject_text = f"Reservation has been cancelled: Rosedene Highland House No.{self.booking_reference}"
         else:
             subject_text = f"Confirmation of your reservation: Rosedene Highland House No.{self.booking_reference}"
 
