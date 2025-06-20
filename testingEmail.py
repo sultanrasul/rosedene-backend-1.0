@@ -14,7 +14,7 @@ email_sender = create_email(
     name="Sultan Rasul",
     breakdown_html_rows="breakdown_html_rows",
     clientPrice="1000",
-    booking_reference="13452345",
+    booking_reference="134523451",
     date_from="01/01/01",
     date_to="01/01/01",
     apartmentName="Emperor Apartment 1",
@@ -24,7 +24,7 @@ email_sender = create_email(
     childrenAges=[],
     nights=2,
     refundable=False,
-    email="sultanrasul5@gmail.com",
+    email="sultanrasul5@outlook.com",
     specialRequests="",
     cancel=False
 )
@@ -32,4 +32,4 @@ email_sender = create_email(
 email_sender.send_email(os.getenv('email'))
 
 
-print("what is good buddy")
+print(os.getenv("email"))
