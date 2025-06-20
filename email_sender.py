@@ -3,6 +3,14 @@ from sendgrid import SendGridAPIClient
 import traceback
 from mailersend import emails
 
+import brevo_python
+from brevo_python.rest import ApiException
+
+import traceback
+
+configuration = brevo_python.Configuration()
+configuration.api_key['api-key'] = 'YOUR_API_KEY'
+
 class create_email:
     def __init__(self, name, breakdown_html_rows, clientPrice, booking_reference , date_from, date_to,apartmentName, phone, adults, children, childrenAges, nights, refundable, email, specialRequests, cancel):
         self.name = name
@@ -22,7 +30,38 @@ class create_email:
         self.specialRequests = specialRequests
         self.cancel = cancel
 
+    # Currently using brevo for this
     def send_email(self, api_key):
+        # 1. Define the subject
+        if self.cancel:
+            subject = f"Reservation has been cancelled: Rosedene Highland House No.{self.booking_reference}"
+        else:
+            subject = f"Confirmation of your reservation: Rosedene Highland House No.{self.booking_reference}"
+
+        # 2. Setup Brevo config
+        configuration = brevo_python.Configuration()
+        print(api_key)
+        configuration.api_key['api-key'] = api_key
+
+        # 3. Create the email payload
+        email_data = brevo_python.SendSmtpEmail(
+            to=[{"email": self.email}],
+            sender={"name": "Rosedene Bookings", "email": "booking@rosedenedirect.com"},
+            subject=subject,
+            html_content=self.create_html(),  # Your custom HTML
+            reply_to={"email": "booking@rosedenedirect.com", "name": "Rosedene Support"}
+        )
+
+        # 4. Send the email
+        try:
+            api_instance = brevo_python.TransactionalEmailsApi(brevo_python.ApiClient(configuration))
+            response = api_instance.send_transac_email(email_data)
+            print("Email sent via Brevo:", response)
+        except ApiException as e:
+            print("Exception when sending email via Brevo:")
+            traceback.print_exc()
+
+    def send_email_mailersend(self, api_key):
         mailer = emails.NewEmail(api_key)
         mail_body = {}
 
