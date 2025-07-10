@@ -4,21 +4,159 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "4285a12607284502993d27d3a983e6ea",
+        "ResponseID": "7f0623958c334992b4c4347bbd68b07d",
         "Prices": {
             "@PropertyID": "3069140",
             "Season": [
                 {
-                    "@DateFrom": "2025-03-31",
-                    "@DateTo": "2025-04-01",
-                    "Price": "1200.0000",
-                    "Extra": "259.0000"
+                    "@DateFrom": "2025-07-10",
+                    "@DateTo": "2025-07-10",
+                    "Price": "479.0000",
+                    "Extra": "0"
                 },
                 {
-                    "@DateFrom": "2027-03-01",
-                    "@DateTo": "2027-03-07",
-                    "Price": "1200.0000",
-                    "Extra": "549.0000"
+                    "@DateFrom": "2025-07-11",
+                    "@DateTo": "2025-07-12",
+                    "Price": "529.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-13",
+                    "@DateTo": "2025-07-17",
+                    "Price": "479.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-18",
+                    "@DateTo": "2025-07-19",
+                    "Price": "529.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-20",
+                    "@DateTo": "2025-07-24",
+                    "Price": "479.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-25",
+                    "@DateTo": "2025-07-26",
+                    "Price": "529.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-27",
+                    "@DateTo": "2025-07-31",
+                    "Price": "479.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-01",
+                    "@DateTo": "2025-08-02",
+                    "Price": "529.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-03",
+                    "@DateTo": "2025-08-07",
+                    "Price": "479.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-08",
+                    "@DateTo": "2025-08-09",
+                    "Price": "529.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-10",
+                    "@DateTo": "2025-08-14",
+                    "Price": "479.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-15",
+                    "@DateTo": "2025-08-16",
+                    "Price": "529.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-17",
+                    "@DateTo": "2025-08-21",
+                    "Price": "479.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-22",
+                    "@DateTo": "2025-08-23",
+                    "Price": "529.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-24",
+                    "@DateTo": "2025-08-28",
+                    "Price": "479.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-29",
+                    "@DateTo": "2025-08-30",
+                    "Price": "529.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-31",
+                    "@DateTo": "2025-09-04",
+                    "Price": "479.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-05",
+                    "@DateTo": "2025-09-06",
+                    "Price": "529.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-07",
+                    "@DateTo": "2025-09-11",
+                    "Price": "479.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-12",
+                    "@DateTo": "2025-09-13",
+                    "Price": "529.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-14",
+                    "@DateTo": "2025-09-18",
+                    "Price": "479.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-19",
+                    "@DateTo": "2025-09-20",
+                    "Price": "529.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-21",
+                    "@DateTo": "2025-09-25",
+                    "Price": "479.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-26",
+                    "@DateTo": "2025-09-27",
+                    "Price": "529.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-28",
+                    "@DateTo": "2025-09-30",
+                    "Price": "479.0000",
+                    "Extra": "0"
                 }
             ],
             "FSPSeasons": null
@@ -29,9 +167,15 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "68cc3d94ae9049d98d6c40e94c1445de",
+        "ResponseID": "5410f217719b42d9946d3cc477cd82a6",
         "Prices": {
             "@PropertyID": "3070529",
+            "Season": {
+                "@DateFrom": "2025-07-10",
+                "@DateTo": "2025-09-30",
+                "Price": "479.0000",
+                "Extra": "0"
+            },
             "FSPSeasons": null
         }
     },
@@ -40,9 +184,15 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "281e19bcf0084de4ae4e53d44e64bbaf",
+        "ResponseID": "3fb444fe7cbd4362880cfa1f741d403a",
         "Prices": {
             "@PropertyID": "3070534",
+            "Season": {
+                "@DateFrom": "2025-07-10",
+                "@DateTo": "2025-09-30",
+                "Price": "479.0000",
+                "Extra": "0"
+            },
             "FSPSeasons": null
         }
     },
@@ -51,9 +201,15 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "d485477a70f4410b917e840afa1315f8",
+        "ResponseID": "511ae8a31aed47d293631997a27b33f0",
         "Prices": {
             "@PropertyID": "3070536",
+            "Season": {
+                "@DateFrom": "2025-07-10",
+                "@DateTo": "2025-09-30",
+                "Price": "479.0000",
+                "Extra": "0"
+            },
             "FSPSeasons": null
         }
     },
@@ -62,9 +218,161 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "34a71eb4f5ce41d7ac9268bfeea829b1",
+        "ResponseID": "6c8df36f6f6e4747bcea46c6eb2a171f",
         "Prices": {
             "@PropertyID": "3070531",
+            "Season": [
+                {
+                    "@DateFrom": "2025-07-10",
+                    "@DateTo": "2025-07-10",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-11",
+                    "@DateTo": "2025-07-12",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-13",
+                    "@DateTo": "2025-07-17",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-18",
+                    "@DateTo": "2025-07-19",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-20",
+                    "@DateTo": "2025-07-24",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-25",
+                    "@DateTo": "2025-07-26",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-27",
+                    "@DateTo": "2025-07-31",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-01",
+                    "@DateTo": "2025-08-02",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-03",
+                    "@DateTo": "2025-08-07",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-08",
+                    "@DateTo": "2025-08-09",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-10",
+                    "@DateTo": "2025-08-14",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-15",
+                    "@DateTo": "2025-08-16",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-17",
+                    "@DateTo": "2025-08-21",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-22",
+                    "@DateTo": "2025-08-23",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-24",
+                    "@DateTo": "2025-08-28",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-29",
+                    "@DateTo": "2025-08-30",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-31",
+                    "@DateTo": "2025-09-04",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-05",
+                    "@DateTo": "2025-09-06",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-07",
+                    "@DateTo": "2025-09-11",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-12",
+                    "@DateTo": "2025-09-13",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-14",
+                    "@DateTo": "2025-09-18",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-19",
+                    "@DateTo": "2025-09-20",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-21",
+                    "@DateTo": "2025-09-25",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-26",
+                    "@DateTo": "2025-09-27",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-28",
+                    "@DateTo": "2025-09-30",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                }
+            ],
             "FSPSeasons": null
         }
     },
@@ -73,9 +381,161 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "7bdab5f7da384dd69c65eeed06b4660b",
+        "ResponseID": "1a5844e8bb004dafba0ee5a0fee46a51",
         "Prices": {
             "@PropertyID": "3070533",
+            "Season": [
+                {
+                    "@DateFrom": "2025-07-10",
+                    "@DateTo": "2025-07-10",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-11",
+                    "@DateTo": "2025-07-12",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-13",
+                    "@DateTo": "2025-07-17",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-18",
+                    "@DateTo": "2025-07-19",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-20",
+                    "@DateTo": "2025-07-24",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-25",
+                    "@DateTo": "2025-07-26",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-27",
+                    "@DateTo": "2025-07-31",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-01",
+                    "@DateTo": "2025-08-02",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-03",
+                    "@DateTo": "2025-08-07",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-08",
+                    "@DateTo": "2025-08-09",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-10",
+                    "@DateTo": "2025-08-14",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-15",
+                    "@DateTo": "2025-08-16",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-17",
+                    "@DateTo": "2025-08-21",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-22",
+                    "@DateTo": "2025-08-23",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-24",
+                    "@DateTo": "2025-08-28",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-29",
+                    "@DateTo": "2025-08-30",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-31",
+                    "@DateTo": "2025-09-04",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-05",
+                    "@DateTo": "2025-09-06",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-07",
+                    "@DateTo": "2025-09-11",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-12",
+                    "@DateTo": "2025-09-13",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-14",
+                    "@DateTo": "2025-09-18",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-19",
+                    "@DateTo": "2025-09-20",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-21",
+                    "@DateTo": "2025-09-25",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-26",
+                    "@DateTo": "2025-09-27",
+                    "Price": "374.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-28",
+                    "@DateTo": "2025-09-30",
+                    "Price": "358.0000",
+                    "Extra": "0"
+                }
+            ],
             "FSPSeasons": null
         }
     },
@@ -84,9 +544,15 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "ce57b3203e4f4c399f8002cd66e05fba",
+        "ResponseID": "9373b793fa9d4941a0506eddabbe73a9",
         "Prices": {
             "@PropertyID": "3070540",
+            "Season": {
+                "@DateFrom": "2025-07-10",
+                "@DateTo": "2025-09-30",
+                "Price": "383.0000",
+                "Extra": "0"
+            },
             "FSPSeasons": null
         }
     },
@@ -95,9 +561,161 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "1b04ce242c814aa79d8ff13e003f5f4f",
+        "ResponseID": "1dd9f7956b31493393aa9761de17e384",
         "Prices": {
             "@PropertyID": "3070538",
+            "Season": [
+                {
+                    "@DateFrom": "2025-07-10",
+                    "@DateTo": "2025-07-10",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-11",
+                    "@DateTo": "2025-07-12",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-13",
+                    "@DateTo": "2025-07-17",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-18",
+                    "@DateTo": "2025-07-19",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-20",
+                    "@DateTo": "2025-07-24",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-25",
+                    "@DateTo": "2025-07-26",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-27",
+                    "@DateTo": "2025-07-31",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-01",
+                    "@DateTo": "2025-08-02",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-03",
+                    "@DateTo": "2025-08-07",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-08",
+                    "@DateTo": "2025-08-09",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-10",
+                    "@DateTo": "2025-08-14",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-15",
+                    "@DateTo": "2025-08-16",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-17",
+                    "@DateTo": "2025-08-21",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-22",
+                    "@DateTo": "2025-08-23",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-24",
+                    "@DateTo": "2025-08-28",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-29",
+                    "@DateTo": "2025-08-30",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-31",
+                    "@DateTo": "2025-09-04",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-05",
+                    "@DateTo": "2025-09-06",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-07",
+                    "@DateTo": "2025-09-11",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-12",
+                    "@DateTo": "2025-09-13",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-14",
+                    "@DateTo": "2025-09-18",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-19",
+                    "@DateTo": "2025-09-20",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-21",
+                    "@DateTo": "2025-09-25",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-26",
+                    "@DateTo": "2025-09-27",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-28",
+                    "@DateTo": "2025-09-30",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                }
+            ],
             "FSPSeasons": null
         }
     },
@@ -106,9 +724,161 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "7bc7d9d6dcb449e89afe686045802b08",
+        "ResponseID": "f111f5f4dfd04c3d931c89f6918d100e",
         "Prices": {
             "@PropertyID": "3070537",
+            "Season": [
+                {
+                    "@DateFrom": "2025-07-10",
+                    "@DateTo": "2025-07-10",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-11",
+                    "@DateTo": "2025-07-12",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-13",
+                    "@DateTo": "2025-07-17",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-18",
+                    "@DateTo": "2025-07-19",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-20",
+                    "@DateTo": "2025-07-24",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-25",
+                    "@DateTo": "2025-07-26",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-07-27",
+                    "@DateTo": "2025-07-31",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-01",
+                    "@DateTo": "2025-08-02",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-03",
+                    "@DateTo": "2025-08-07",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-08",
+                    "@DateTo": "2025-08-09",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-10",
+                    "@DateTo": "2025-08-14",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-15",
+                    "@DateTo": "2025-08-16",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-17",
+                    "@DateTo": "2025-08-21",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-22",
+                    "@DateTo": "2025-08-23",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-24",
+                    "@DateTo": "2025-08-28",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-29",
+                    "@DateTo": "2025-08-30",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-08-31",
+                    "@DateTo": "2025-09-04",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-05",
+                    "@DateTo": "2025-09-06",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-07",
+                    "@DateTo": "2025-09-11",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-12",
+                    "@DateTo": "2025-09-13",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-14",
+                    "@DateTo": "2025-09-18",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-19",
+                    "@DateTo": "2025-09-20",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-21",
+                    "@DateTo": "2025-09-25",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-26",
+                    "@DateTo": "2025-09-27",
+                    "Price": "544.0000",
+                    "Extra": "0"
+                },
+                {
+                    "@DateFrom": "2025-09-28",
+                    "@DateTo": "2025-09-30",
+                    "Price": "503.0000",
+                    "Extra": "0"
+                }
+            ],
             "FSPSeasons": null
         }
     },
@@ -117,9 +887,15 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "0f4e00cd1c1b4883bbaca6771ff72279",
+        "ResponseID": "679564ef1ca14ad091c32c21a8c160d9",
         "Prices": {
             "@PropertyID": "3070530",
+            "Season": {
+                "@DateFrom": "2025-07-10",
+                "@DateTo": "2025-09-30",
+                "Price": "383.0000",
+                "Extra": "0"
+            },
             "FSPSeasons": null
         }
     }
