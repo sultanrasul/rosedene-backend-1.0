@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import json
 import xmltodict
+import logging
 
 class Pull_ListPropertyAvailabilityCalendar_RQ:
     def __init__(self, username, password, property_id, date_from, date_to):
@@ -19,8 +20,20 @@ class Pull_ListPropertyAvailabilityCalendar_RQ:
         ET.SubElement(root, "DateFrom").text = self.date_from.strftime("%Y-%m-%d")
         ET.SubElement(root, "DateTo").text = self.date_to.strftime("%Y-%m-%d")
         return ET.tostring(root, encoding="unicode")
-
+    
     def check_availability_calendar(self, response_xml):
-        json_response = xmltodict.parse(response_xml)
-        calendar = json_response["Pull_ListPropertyAvailabilityCalendar_RS"]["PropertyCalendar"]["CalDay"]
-        return calendar
+        try:
+            json_response = xmltodict.parse(response_xml)
+
+            # Access deeply nested data
+            calendar = json_response["Pull_ListPropertyAvailabilityCalendar_RS"]["PropertyCalendar"]["CalDay"]
+            return calendar
+
+        except KeyError as e:
+            logging.error("KeyError while accessing calendar data: %s", e)
+            logging.error("Full parsed JSON response:\n%s", json.dumps(json_response, indent=2))
+            raise
+
+        except Exception as e:
+            logging.exception("Unexpected error while parsing availability calendar")
+            raise
