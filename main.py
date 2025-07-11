@@ -16,12 +16,22 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 import time
 import traceback
+import logging
+import google.cloud.logging
+
+# Instantiates a client
 
 import hashlib
 from flask_caching import Cache
 import json
 
 import os
+
+if os.getenv("ENV") == "production":
+    from google.cloud import logging as cloud_logging
+    client = cloud_logging.Client()
+    client.setup_logging()
+
 from dotenv import load_dotenv
 
 from email_sender import create_email
@@ -91,48 +101,81 @@ api_endpoint = "https://new.rentalsunited.com/api/handler.ashx"
 # This gives back the availability of all properties within the users date range
 @app.route('/blocked_apartments', methods=['POST'])
 def check_blocked_apartments():
-    date_from = request.json['date_from']
-    date_to = request.json['date_to']
 
 
-    props_request = Pull_ListPropertiesBlocks_RQ(
-        username, password, location_id=7912,
-        date_from=datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"]),
-        date_to=datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
-    )
+    try:
+        date_from = request.json['date_from']
+        date_to = request.json['date_to']
+        try:
+            date_from = request.json['date_from']
+            date_to = request.json['date_to']
+            date_from_obj = datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"])
+            date_to_obj = datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
+        except Exception:
+            return jsonify({"error": "Invalid date format"}), 400
+        
+        props_request = Pull_ListPropertiesBlocks_RQ(
+            username, password, location_id=7912,
+            date_from=date_from_obj,
+            date_to=date_to_obj
+        )
 
-    response = requests.post(api_endpoint, data=props_request.serialize_request(), headers={"Content-Type": "application/xml"})
-    properties = props_request.check_blocked_properties(response.text, apartment_ids)
+        response = requests.post(api_endpoint, data=props_request.serialize_request(), headers={"Content-Type": "application/xml"})
+        properties = props_request.check_blocked_properties(response.text, apartment_ids)
 
-    # Fetch prices for available apartments
-    prices = Pull_ListPropertyPrices_RQ.get_all_prices()
+        # Fetch prices for available apartments
+        prices = Pull_ListPropertyPrices_RQ.get_all_prices()
+
+        if not props_request or "available" not in props_request:
+            return jsonify({"error": "Apartment is blocked for selected dates"}), 400
+            
+        # Now add the prices to each apartment and include the overlap logic
+        for apartment in properties['available']:
+            apartment_prices = prices[str(apartment['id'])]
+            if apartment_prices['Prices']:
+                apartment['Prices'] = apartment_prices['Prices']  # Add the list of prices for this apartment
+            else:
+                apartment['Prices'] = 'N/A'  # Default to 'N/A' if no price is found
+
+        return jsonify({'properties': properties})
+    
+    except Exception as e:
+        logging.error(f"Error checking blocks: {e}")
+        return False
 
 
-
-
-    # Now add the prices to each apartment and include the overlap logic
-    for apartment in properties['available']:
-        apartment_prices = prices[str(apartment['id'])]
-        if apartment_prices['Prices']:
-            apartment['Prices'] = apartment_prices['Prices']  # Add the list of prices for this apartment
-        else:
-            apartment['Prices'] = 'N/A'  # Default to 'N/A' if no price is found
-
-    return jsonify({'properties': properties})
 
 
 @app.route('/check_price', methods=['POST'])
-# @cache.memoize(timeout=300) # this does not work because if someone was to go to apatment 1 check the price then went to apartment 2 they would still get the price for apartment 1
 def check_price():
+    try:
+        property_id = request.json.get('property_id')
 
-    property_id = request.json['property_id']
+        if not property_id:
+            
+            logging.error(f"❌ Missing property_id")
+            return jsonify({"error": "Missing property_id"}), 400
 
-    # Check Apartment Price
-    
-    prices = Pull_ListPropertyPrices_RQ.get_all_prices()[str(property_id)]
+        # Get all prices
+        all_prices = Pull_ListPropertyPrices_RQ.get_all_prices()
+        if not all_prices or str(property_id) not in all_prices:
+            logging.error(f"❌ No price data found for this property")
+            return jsonify({"error": "No price data found for this property"}), 404
 
+        prices = all_prices[str(property_id)]
 
-    return prices
+        # Safely extract Seasons
+        property_prices = prices.get("Prices", {})
+        seasons = property_prices.get("Season")
+
+        if not seasons:
+            return jsonify({"error": "No seasonal pricing information available"}), 404
+
+        return prices
+
+    except Exception as e:
+        logging.error(f"❌ Error in check_price: {e}")
+        return jsonify({"error": "An unexpected error occurred"}), 500
 
 @app.route('/verify_price', methods=['POST'])
 # @cache.memoize(timeout=300) # this does not work because if someone was to go to apatment 1 check the price then went to apartment 2 they would still get the price for apartment 1
@@ -179,13 +222,13 @@ def verify_price():
         "breakdown": breakdown
     })
 
-# This gives back the specific apartment availability for the next 3 years
+# This gives back the specific apartment availability for the next 2 years
 @app.route('/check_calendar', methods=['POST'])
 def check_calendar():
 
     property_id = request.json['property_id']
     date_from = datetime.today()
-    date_to = date_from + relativedelta(years=3)
+    date_to = date_from + relativedelta(years=2)
 
 
     # Check Availability Calendar
@@ -202,75 +245,98 @@ def check_calendar():
 
 @app.route('/create-checkout', methods=['POST'])
 def create_checkout():
-    # Booking Information
-    date_from = request.json['date_from']
-    date_to = request.json['date_to']
-    property_id = request.json['property_id']
-    adults = int(request.json['adults'])
-    children = int(request.json['children'])
-    childrenAges = request.json['childrenAges']
-    refundable = request.json['refundable']
-    
-
-    # Guest Information
-    name = request.json['name']
-    phone = request.json['phone']
-    email = request.json['email']
-    specialRequests = request.json['special_requests']
-
-
-    apartment_number = apartment_ids[property_id].split()[-1]
-
-    cancelURL = request.json["url"]
-    date_from_obj = datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"])
-    date_to_obj = datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
-
-    # Check Availability Calendar
-    avail_request = Pull_ListPropertyAvailabilityCalendar_RQ(
-        username, password, property_id=property_id,
-        date_from=date_from_obj, 
-        date_to=date_to_obj
-    )
-    if children+adults > max_guests[int(apartment_number)]:
-        return jsonify({'error': f'Max Guests allowed for this apartment is {max_guests[int(apartment_number)]}'}), 420
-
-    response = requests.post(api_endpoint, data=avail_request.serialize_request(), headers={"Content-Type": "application/xml"})
-    calendar = avail_request.check_availability_calendar(response.text)
-    
-    for day in calendar:
-        if day["IsBlocked"] == "true":
-            return jsonify({'error': 'This apartment is not available for these dates!'}), 420
-    
-    
-
-    # Calculate the number of nights
-    nights = (date_to_obj - date_from_obj).days
-
-    # Get Price
-    basePrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, guests=(adults+children),
-        date_from=date_from_obj, 
-        date_to=date_to_obj,
-    )
-    customerPrice = Pull_ListPropertyPrices_RQ.calculate_client_price(basePrice=basePrice, refundable=refundable)
-
-
-    if customerPrice == 0:
-        return jsonify({'error': 'This apartment is not available for these dates!'}), 420
-
-    displayDate = f'{date_from["day"]}/{date_from["month"]}/{date_from["year"]} - {date_to["day"]}/{date_to["month"]}/{date_to["year"]}'
-    description = f"{displayDate} • {adults} Adult{'s' if adults > 1 else ''}"
-    if children > 0:
-        description += f" • {children} Child{'ren' if children != 1 else ''}"
-    
-
     try:
+        data = request.get_json()
+        required_fields = ["date_from", "date_to", "property_id", "adults", "children", "childrenAges", "refundable", "name", "phone", "email", "special_requests"]
+
+
+        # 1. Validate all fields
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing field: {field}"}), 400
+
+        # 2. Parse input values
+
+        # Booking Information
+        property_id = int(data['property_id'])
+        adults = int(data['adults'])
+        children = int(data['children'])
+        childrenAges = data['childrenAges']
+        refundable = bool(data['refundable'])
+        total_guests = adults + children
+        
+
+        # Guest Information
+        name = data['name'].strip()
+        phone = data['phone'].strip()
+        email = data['email'].strip()
+        specialRequests = data['special_requests']
+
+
+        apartment_number = apartment_ids[property_id].split()[-1]
+
+        # cancelURL = request.json["url"] not sure if I still send that from the frontend
+        try:
+            date_from = data['date_from']
+            date_to = data['date_to']
+            date_from_obj = datetime(day=date_from["day"], month=date_from["month"], year=date_from["year"])
+            date_to_obj = datetime(day=date_to["day"], month=date_to["month"], year=date_to["year"])
+        except Exception:
+            return jsonify({"error": "Invalid date format"}), 400
+        
+        nights = (date_to_obj - date_from_obj).days
+        if nights <= 0:
+            return jsonify({"error": "Invalid date range"}), 400
+
+        # 3. Enforce max guest limit
+        apartment_number = int(apartment_ids[property_id].split()[-1])  # e.g. "Apartment 5" → 5
+        max_allowed = max_guests.get(apartment_number)
+        if max_allowed and total_guests > max_allowed:
+            return jsonify({"error": f"Max guests allowed: {max_allowed}"}), 400
+
+        # Check Availability Calendar
+        avail_request = Pull_ListPropertyAvailabilityCalendar_RQ(
+            username, password, property_id=property_id,
+            date_from=date_from_obj, 
+            date_to=date_to_obj
+        )
+        if children+adults > max_guests[int(apartment_number)]:
+            return jsonify({'error': f'Max Guests allowed for this apartment is {max_guests[int(apartment_number)]}'}), 420
+
+        response = requests.post(api_endpoint, data=avail_request.serialize_request(), headers={"Content-Type": "application/xml"})
+        calendar = avail_request.check_availability_calendar(response.text)
+        
+        for day in calendar:
+            if day["IsBlocked"] == "true":
+                return jsonify({"error": "Apartment is not available for selected dates"}), 409
+
+        # Get Price
+        basePrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=property_id, guests=total_guests,
+            date_from=date_from_obj, 
+            date_to=date_to_obj,
+        )
+        customerPrice = Pull_ListPropertyPrices_RQ.calculate_client_price(basePrice=basePrice, refundable=refundable)
+
+
+        if customerPrice == 0:
+            return jsonify({'error': 'This apartment is not available for these dates!'}), 500
+
+        displayDate = f'{date_from["day"]}/{date_from["month"]}/{date_from["year"]} - {date_to["day"]}/{date_to["month"]}/{date_to["year"]}'
+        description = f"{displayDate} • {adults} Adult{'s' if adults > 1 else ''}"
+        if children > 0:
+            description += f" • {children} Child{'ren' if children != 1 else ''}"
+        
+
         payment_intent = stripe.PaymentIntent.create(
             amount=int(customerPrice * 100),
                 # Amount in pence
             currency='gbp',
-            automatic_payment_methods={
-                'enabled': True,
-            },
+            payment_method_types=['card'],
+
+            # Leave out paypal and revoult for now because I need to implement the redirects
+            # automatic_payment_methods={
+            #     'enabled': True,
+            # },
             metadata={
                 "apartment_id": property_id,
                 "apartment_name": apartment_ids[property_id],
@@ -292,13 +358,26 @@ def create_checkout():
             capture_method='manual'  # Keep if you need manual capture
         )
 
-    except Exception as e:
-        return str(e)
-
-    return jsonify({
-            'clientSecret': payment_intent.client_secret,
-            'amount': customerPrice  # Optional: Send amount for display
+        logging.info({
+            "severity": "INFO",
+            "message": "Create Checkout Request",
+            "payment_intent_id": payment_intent.id,
+            "property_id": property_id,
+            "guests": adults + children,
+            "refundable": refundable,
+            "date_from": str(date_from),
+            "date_to": str(date_to),
+            "client_ip": request.headers.get('X-Forwarded-For', request.remote_addr)
         })
+
+        return jsonify({
+                'clientSecret': payment_intent.client_secret,
+                'amount': customerPrice  # Optional: Send amount for display
+            })
+    
+    except Exception as e:
+        logging.exception("⚠️ Failed to create checkout")
+        return jsonify({"error": "An unexpected error occurred"}), 500
 
 
 @app.route('/update-guest-info', methods=['POST'])
@@ -328,6 +407,14 @@ def update_guest_info():
                 "special_requests": special_requests
             }
         )
+        
+        logging.info({
+            "severity": "INFO",
+            "message": "Updated Guest Information At Checkout",
+            "payment_intent_id": payment_intent_id,
+            "client_ip": request.headers.get('X-Forwarded-For', request.remote_addr)
+        })
+
         return jsonify({"message": "Guest info updated successfully"}), 200
 
     except Exception as e:
@@ -335,32 +422,54 @@ def update_guest_info():
 
 @app.route('/cancel_booking', methods=['POST'])
 def cancel_booking():
+    try:
         data = request.json
         booking_ref = data.get('booking_ref')
         email = data.get('email')
+        user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
 
         if not booking_ref or not email:
+            logging.warning({
+                "message": "Missing booking_ref or email",
+                "booking_ref": booking_ref,
+                "email": email,
+                "ip": user_ip,
+                "severity": "WARNING"
+            })
             return jsonify({'error': 'Missing booking_ref or email'}), 400
+
+        logging.info({
+            "message": "Cancellation attempt received",
+            "booking_ref": booking_ref,
+            "email": email,
+            "ip": user_ip,
+            "severity": "INFO"
+        })
 
         # Get booking details
         reservation = Pull_GetReservationByID_RQ(username, password, booking_ref)
         response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
         booking_data = reservation.get_details(response.text)
-    
+
         status_info = booking_data["Pull_GetReservationByID_RS"]["Status"]
         status_code = int(status_info["@ID"])
         status_text = status_info["#text"]
 
         if status_code != 0:
-            if status_code == 28:
-                return jsonify({'error': status_text}), 420
-            return jsonify({'error': status_text}), 400
+            logging.warning({
+                "message": "Reservation lookup failed",
+                "status_code": status_code,
+                "status_text": status_text,
+                "booking_ref": booking_ref,
+                "severity": "WARNING"
+            })
+            return jsonify({'error': status_text}), 420 if status_code == 28 else 400
 
-        # Extract data
+        # Extract data...
         reservation_data = booking_data["Pull_GetReservationByID_RS"]["Reservation"]
         reservationID = reservation_data["ReservationID"]
         rentalsUnitedCommentsJson = json.loads(reservation_data["Comments"])
-
+        bookingEmail = reservation_data["CustomerInfo"]["Email"]
 
         # Customer Info
         customer_info = reservation_data["CustomerInfo"]
@@ -399,7 +508,6 @@ def cancel_booking():
 
 
 
-
         if email.lower() != bookingEmail.lower():
             return jsonify({'error': 'Email does not match booking'}), 420
 
@@ -407,9 +515,20 @@ def cancel_booking():
         paymentIntentId = rentalsUnitedCommentsJson.get("paymentIntentId")
         specialRequest = rentalsUnitedCommentsJson.get("specialRequest")
 
+        if email.lower() != bookingEmail.lower():
+            logging.warning({
+                "message": "Email mismatch during cancellation",
+                "submitted_email": email,
+                "booking_email": bookingEmail,
+                "booking_ref": booking_ref,
+                "severity": "WARNING"
+            })
+            return jsonify({'error': 'Email does not match booking'}), 420
 
+        refundable = rentalsUnitedCommentsJson.get("refundable", False)
+        paymentIntentId = rentalsUnitedCommentsJson.get("paymentIntentId")
 
-        # Step 1: Cancel reservation with Rentals United
+        # Step 1: Cancel in Rentals United
         try:
             cancel = Push_CancelReservation_RQ(username, password, booking_ref, cancel_type_id=2)
             cancel_response = requests.post(api_endpoint, data=cancel.serialize_request(), headers={"Content-Type": "application/xml"})
@@ -419,33 +538,51 @@ def cancel_booking():
             cancel_text = cancel_data["Push_CancelReservation_RS"]["Status"]["#text"]
 
             if cancel_status != 0:
+                logging.error({
+                    "message": "Failed to cancel reservation in Rentals United",
+                    "booking_ref": booking_ref,
+                    "status": cancel_status,
+                    "error": cancel_text,
+                    "severity": "ERROR"
+                })
                 return jsonify({'error': f'Cancel failed: {cancel_text}'}), 500
+
         except Exception as e:
+            logging.exception(f"❌ Exception cancelling RU booking {booking_ref}")
             return jsonify({'error': f'Failed to cancel reservation: {str(e)}'}), 500
 
-        # Step 2: If refundable, attempt refund
+        # Step 2: Refund via Stripe
         refund_successful = False
         if refundable:
             try:
                 payment_intent = stripe.PaymentIntent.retrieve(paymentIntentId, expand=["charges"])
-
                 charge_id = payment_intent.latest_charge
+
                 if not charge_id:
                     raise Exception("No charge found for PaymentIntent")
-                
+
                 refund = stripe.Refund.create(
                     charge=charge_id,
                     reason='requested_by_customer'
                 )
-
                 refund_successful = refund.status == "succeeded"
                 if not refund_successful:
                     raise Exception("Refund status not succeeded")
 
+                logging.info({
+                    "message": "Stripe refund successful",
+                    "payment_intent_id": paymentIntentId,
+                    "charge_id": charge_id,
+                    "refund_status": refund.status,
+                    "severity": "INFO"
+                })
+
             except Exception as e:
+                logging.exception(f"❌ Refund failed for payment intent {paymentIntentId}")
                 return jsonify({'error': f'Refund failed: {str(e)} — booking not cancelled'}), 500
 
         # Step 3: Send Cancelation Email
+
         ruPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=apartmentID, guests=(adults+children),
             date_from = date_from_obj,
             date_to= date_to_obj,
@@ -490,68 +627,87 @@ def cancel_booking():
                 </tr>
                 """
 
+        try:
+            email_sender = create_email(
+                name=name,
+                breakdown_html_rows=breakdown_html_rows,
+                clientPrice=clientPrice,
+                booking_reference=reservationID,
+                date_from=f"{date_from_obj.day} {date_from_obj.strftime('%b')} {date_from_obj.year}",
+                date_to=f"{date_to_obj.day} {date_to_obj.strftime('%b')} {date_to_obj.year}",
+                apartmentName=apartment_ids[apartmentID],
+                phone=phone,
+                adults=adults,
+                children=children,
+                childrenAges=childrenAges,
+                nights=nights,
+                refundable=refundable,
+                email=email,
+                specialRequests=specialRequest,
+                cancel=True
+            )
+            email_sender.send_email(os.getenv('email'))
 
+            logging.info({
+                "message": "Cancelation email sent",
+                "booking_ref": booking_ref,
+                "email": email,
+                "severity": "INFO"
+            })
 
-        email_sender = create_email(
-            name=name,
-            breakdown_html_rows=breakdown_html_rows,
-            clientPrice=clientPrice,
-            booking_reference=reservationID,
-            date_from=f"{date_from_obj.day} {date_from_obj.strftime('%b')} {date_from_obj.year}",
-            date_to=f"{date_to_obj.day} {date_to_obj.strftime('%b')} {date_to_obj.year}",
-            apartmentName=apartment_ids[apartmentID],
-            phone=phone,
-            adults=adults,
-            children=children,
-            childrenAges=childrenAges,
-            nights=nights,
-            refundable=refundable,
-            email=email,
-            specialRequests=specialRequest,
-            cancel=True
-        )
+        except Exception as e:
+            logging.exception(f"❌ Failed to send cancellation email for {booking_ref}")
 
-        email_sender.send_email(os.getenv('email'))
-
-        # Final response depending on refund status
         return jsonify({'message': 'Booking cancelled and refunded successfully'})
+
+    except Exception as e:
+        logging.exception("🔥 Uncaught error in cancel_booking route")
+        return jsonify({'error': 'Something went wrong processing the cancel request'}), 500
 
 
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    event = None
     payload = request.data
     sig_header = request.headers['STRIPE_SIGNATURE']
 
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, stripe_webhook_key
-        )
+        event = stripe.Webhook.construct_event(payload, sig_header, stripe_webhook_key)
     except ValueError as e:
-        # Invalid payload
-        raise e
+        logging.exception("⚠️ Invalid payload")
+        return jsonify({"error": "Invalid payload"}), 400
     except stripe.error.SignatureVerificationError as e:
-        # Invalid signature
-        raise e
+        logging.exception("⚠️ Invalid signature")
+        return jsonify({"error": "Invalid signature"}), 400
 
-    # Handle the event
-    if event['type'] == 'charge.succeeded':
-      
-        payment_intent = event['data']['object']
-        payment_intent_id = payment_intent["payment_intent"]
-        payment_intent_object = stripe.PaymentIntent.retrieve(payment_intent_id)
-        billing_details = payment_intent['billing_details']
+    if event['type'] != 'charge.succeeded':
+        logging.info({
+            "message": "Ignored Stripe webhook event",
+            "event_type": event['type'],
+        })
+        return jsonify({"message": "Event ignored"}), 200
+
+    try:
+        # Handle the event
+        charge_obj = event['data']['object']
+        payment_intent_id = charge_obj["payment_intent"]
+        # payment_intent_object = stripe.PaymentIntent.retrieve(payment_intent_id)
+        billing_details = charge_obj['billing_details']
         name = billing_details["name"]
         phone = billing_details["phone"]
         email = billing_details["email"]
         country = billing_details["address"]["country"]
         postal_code = billing_details["address"]["postal_code"]
 
-        meta_data = payment_intent.metadata
+        meta_data = charge_obj.metadata
+
+        required_fields = ["adults", "children", "apartment_id", "refundable", "date_from", "date_to", "nights"]
+        for field in required_fields:
+            if field not in meta_data:
+                raise ValueError(f"Missing required metadata field: {field}")
+
         adults = int(meta_data["adults"])
         apartment_id = int(meta_data["apartment_id"])
-        apartment_name = meta_data["apartment_name"]
         refundable = meta_data["refundable"].lower() == "true"
         children = int(meta_data["children"])
         childrenAges = []
@@ -564,7 +720,7 @@ def webhook():
         special_requests = meta_data.get("special_requests", "")
         nights = int(meta_data["nights"])
 
-    
+
         dateFrom = {
             "day": int(date_from.split("/")[0]),
             "month": int(date_from.split("/")[1]),
@@ -575,14 +731,14 @@ def webhook():
             "month": int(date_to.split("/")[1]),
             "year": int(date_to.split("/")[2])
         }
-    
+
         ruPrice = Pull_ListPropertyPrices_RQ.calculate_ru_price(property_id=apartment_id, guests=(adults+children),
             date_from = datetime(day=dateFrom["day"], month=dateFrom["month"], year=dateFrom["year"]),
             date_to= datetime(day=dateTo["day"], month=dateTo["month"], year=dateTo["year"]),
         )
 
         clientPrice = Pull_ListPropertyPrices_RQ.calculate_client_price(basePrice=ruPrice, refundable=refundable)
-    
+
         booking_data = {
             "adults": adults,
             "children": children,
@@ -619,29 +775,34 @@ def webhook():
             commission=0
         )
         response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
-        
         jsonResponse = reservation.booking_reference(response.text)
+
         status_code = int(jsonResponse["Push_PutConfirmedReservationMulti_RS"]["Status"]["@ID"])
         status_text = jsonResponse["Push_PutConfirmedReservationMulti_RS"]["Status"]["#text"]
-        
-        if status_code !=0:
-            stripe.PaymentIntent.modify(payment_intent_id,metadata={"error_code": status_code, "error_text": status_text})
 
+        if status_code != 0:
+            # Abort: cancel payment and record error
+            stripe.PaymentIntent.modify(payment_intent_id, metadata={"error_code": status_code, "error_text": status_text})
             stripe.PaymentIntent.cancel(payment_intent_id, cancellation_reason="abandoned")
-            return jsonify({'error': status_code}), 420
-        else:
-            stripe.PaymentIntent.capture(payment_intent_id)
+
+            logging.error(f"Booking failed with RU error: {status_text}")
+
+            return jsonify({"error": status_text}), 409
+            
 
 
         booking_reference = jsonResponse["Push_PutConfirmedReservationMulti_RS"]["ReservationID"]
-    
 
-        stripe.PaymentIntent.modify(
-            payment_intent_id,
-                metadata={
-                    "booking_reference": booking_reference
-                }
-        )
+
+        stripe.PaymentIntent.modify(payment_intent_id,metadata={"booking_reference": booking_reference})
+        stripe.PaymentIntent.capture(payment_intent_id)
+
+        logging.info({
+            "message": "✅ Booking confirmed",
+            "booking_reference": booking_reference,
+            "payment_intent_id": payment_intent_id 
+        })
+
 
         # Breaking down the breakdown of what they paid for 
 
@@ -704,18 +865,23 @@ def webhook():
             specialRequests=special_requests,
             cancel=False
         )
-
-        email_sender.send_email(os.getenv('email'))
-
+        try:
+            email_sender.send_email(os.getenv('email'))
+            logging.info({
+                "message": "📧 Booking email sent",
+                "booking_reference": booking_reference
+            })
+        except Exception as email_error:
+            logging.exception(f"❌ Failed to send booking email for reference {booking_reference}")
 
         ###### SEND BOOKING CONFIRMATION ######
 
 
-        # ... handle other event types
-    else:
-      print('Unhandled event type {}'.format(event['type']))
-
-    return jsonify(success=True)
+        return jsonify({"message": "Booking completed", "reference": booking_reference}), 200
+    
+    except Exception as e:
+        logging.exception("🔥 Unexpected error in webhook")
+        return jsonify({"error": "Internal error during webhook processing"}), 500
 
 @app.route('/payment-status', methods=['POST'])
 def check_payment_status():
