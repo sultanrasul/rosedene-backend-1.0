@@ -126,7 +126,7 @@ def check_blocked_apartments():
         # Fetch prices for available apartments
         prices = Pull_ListPropertyPrices_RQ.get_all_prices()
 
-        if not props_request or "available" not in props_request:
+        if not props_request or "available" not in properties:
             return jsonify({"error": "Apartment is blocked for selected dates"}), 400
             
         # Now add the prices to each apartment and include the overlap logic
