@@ -8,9 +8,6 @@ from brevo_python.rest import ApiException
 
 import traceback
 
-configuration = brevo_python.Configuration()
-configuration.api_key['api-key'] = 'YOUR_API_KEY'
-
 class create_email:
     def __init__(self, name, breakdown_html_rows, clientPrice, booking_reference , date_from, date_to,apartmentName, phone, adults, children, childrenAges, nights, refundable, email, specialRequests, cancel):
         self.name = name
@@ -40,7 +37,6 @@ class create_email:
 
         # 2. Setup Brevo config
         configuration = brevo_python.Configuration()
-        print(api_key)
         configuration.api_key['api-key'] = api_key
 
         # 3. Create the email payload

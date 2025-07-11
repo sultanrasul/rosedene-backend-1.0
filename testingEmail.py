@@ -31,5 +31,3 @@ email_sender = create_email(
 
 email_sender.send_email(os.getenv('email'))
 
-
-print(os.getenv("email"))
