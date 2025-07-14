@@ -23,10 +23,11 @@ email_sender = create_email(
     children=0,
     childrenAges=[],
     nights=2,
-    refundable=False,
+    refundable=True,
     email="sultanrasul5@outlook.com",
     specialRequests="",
-    cancel=False
+    cancel=False,
+    diffDays=15
 )
 
 email_sender.send_email(os.getenv('email'))

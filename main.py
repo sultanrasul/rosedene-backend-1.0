@@ -143,9 +143,6 @@ def check_blocked_apartments():
         logging.error(f"Error checking blocks: {e}")
         return False
 
-
-
-
 @app.route('/check_price', methods=['POST'])
 def check_price():
     try:
@@ -379,7 +376,6 @@ def create_checkout():
         logging.exception("⚠️ Failed to create checkout")
         return jsonify({"error": "An unexpected error occurred"}), 500
 
-
 @app.route('/update-guest-info', methods=['POST'])
 def update_guest_info():
     data = request.json
@@ -432,7 +428,6 @@ def cancel_booking():
             logging.warning({
                 "message": "Missing booking_ref or email",
                 "booking_ref": booking_ref,
-                "email": email,
                 "ip": user_ip,
                 "severity": "WARNING"
             })
@@ -441,7 +436,6 @@ def cancel_booking():
         logging.info({
             "message": "Cancellation attempt received",
             "booking_ref": booking_ref,
-            "email": email,
             "ip": user_ip,
             "severity": "INFO"
         })
@@ -485,6 +479,8 @@ def cancel_booking():
         date_from_obj = datetime.strptime(dateFrom, "%Y-%m-%d")
         date_to_obj = datetime.strptime(dateTo, "%Y-%m-%d")
         nights = (date_to_obj - date_from_obj).days
+
+
 
         apartmentID = int(booking_info.get("PropertyID"))
 
@@ -552,8 +548,14 @@ def cancel_booking():
             return jsonify({'error': f'Failed to cancel reservation: {str(e)}'}), 500
 
         # Step 2: Refund via Stripe
+        
+        # Calculate if the check-in is more than 13 days away
+        today = datetime.today()
+        diffDays = (date_from_obj - today).days
+
+
         refund_successful = False
-        if refundable:
+        if refundable and diffDays >= 13:
             try:
                 payment_intent = stripe.PaymentIntent.retrieve(paymentIntentId, expand=["charges"])
                 charge_id = payment_intent.latest_charge
@@ -644,7 +646,8 @@ def cancel_booking():
                 refundable=refundable,
                 email=email,
                 specialRequests=specialRequest,
-                cancel=True
+                cancel=True,
+                diffDays=diffDays
             )
             email_sender.send_email(os.getenv('email'))
 
@@ -663,8 +666,6 @@ def cancel_booking():
     except Exception as e:
         logging.exception("🔥 Uncaught error in cancel_booking route")
         return jsonify({'error': 'Something went wrong processing the cancel request'}), 500
-
-
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -847,6 +848,10 @@ def webhook():
 
         ###### SEND BOOKING CONFIRMATION ######
 
+        # Calculate if the check-in is more than 13 days away
+        today = datetime.today()
+        diffDays = (date_from_obj - today).days
+
         email_sender = create_email(
             name=name,
             breakdown_html_rows=breakdown_html_rows,
@@ -863,7 +868,8 @@ def webhook():
             refundable=refundable,
             email=email,
             specialRequests=special_requests,
-            cancel=False
+            cancel=False,
+            diffDays=diffDays
         )
         try:
             email_sender.send_email(os.getenv('email'))
@@ -962,6 +968,12 @@ def get_booking():
     date_from_obj = datetime.strptime(dateFrom, "%Y-%m-%d")
     date_to_obj = datetime.strptime(dateTo, "%Y-%m-%d")
 
+
+    # Calculate if the check-in is more than 14 days away
+    today = datetime.today()
+    diffDays = (date_from_obj - today).days
+
+
     nights = (date_to_obj - date_from_obj).days
 
 
@@ -999,6 +1011,7 @@ def get_booking():
         "refundable": refundable,
         "SpecialRequest": rentalsUnitedCommentsJson["specialRequest"],
         "breakdown": breakdown,
+        "diffDays": diffDays
     }
 
     # Add optional fields only if they exist

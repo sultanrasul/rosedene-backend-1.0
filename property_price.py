@@ -114,7 +114,7 @@ class Pull_ListPropertyPrices_RQ:
             
             current_date += timedelta(days=1)  # Move to next night
 
-        return total_price
+        return round(total_price, 2)
 
     @staticmethod
     def calculate_refundable_rate_fee(total_price):
