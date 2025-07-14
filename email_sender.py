@@ -9,7 +9,7 @@ from brevo_python.rest import ApiException
 import traceback
 
 class create_email:
-    def __init__(self, name, breakdown_html_rows, clientPrice, booking_reference , date_from, date_to,apartmentName, phone, adults, children, childrenAges, nights, refundable, email, specialRequests, cancel):
+    def __init__(self, name, breakdown_html_rows, clientPrice, booking_reference , date_from, date_to,apartmentName, phone, adults, children, childrenAges, nights, refundable, email, specialRequests, cancel, diffDays):
         self.name = name
         self.breakdown_html_rows = breakdown_html_rows
         self.clientPrice = clientPrice
@@ -26,6 +26,8 @@ class create_email:
         self.email = email
         self.specialRequests = specialRequests
         self.cancel = cancel
+        self.diffDays = diffDays
+
 
     # Currently using brevo for this
     def send_email(self, api_key):
@@ -150,13 +152,19 @@ class create_email:
                     <tr>
                         <td style="padding-top: 20px;">
                         {f'''
-                        <p style="color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; font-size: 14px; margin: 0 auto;">
-                            Since your booking was made on a <strong>refundable rate</strong>, you will receive a refund within <strong>5–7 business days</strong>.
-                        </p>
-                        ''' if self.refundable else '''
-                        <p style="color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; font-size: 14px; margin: 0 auto;">
-                            This booking was made on a <strong>non-refundable rate</strong>. Unfortunately, no refund will be issued.
-                        </p>
+                            <p style="color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; font-size: 14px; margin: 0 auto;">
+                                Since your booking was made on a <strong>refundable rate</strong>, you will receive a refund within <strong>5–7 business days</strong>.
+                            </p>
+                            ''' if self.refundable and self.diffDays >= 13 else
+                            '''
+                            <p style="color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; font-size: 14px; margin: 0 auto;">
+                                This booking was made on a <strong>refundable rate</strong>, but the <strong>14-day cancellation window</strong> has passed. A refund is no longer available.
+                            </p>
+                            ''' if self.refundable and self.diffDays < 13 else
+                            '''
+                            <p style="color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; font-size: 14px; margin: 0 auto;">
+                                This booking was made on a <strong>non-refundable rate</strong>. Unfortunately, no refund will be issued.
+                            </p>
                         '''}
                         </td>
                     </tr>
@@ -395,9 +403,10 @@ class create_email:
                             </table>
                         </td>
                         </tr>
+                        
                         <tr>
                             <td style="padding:10px 0;" class="full-width-mobile">
-                                <table role="presentation" width="100%" style="background:#{'f0fdf4' if self.refundable else 'fdf2f2'}; border:{'2px solid #84e1bc' if self.refundable else '1px solid #f8b4b4'}; border-radius:12px;">
+                                <table role="presentation" width="100%" style="background:#{'f0fdf4' if self.refundable and self.diffDays >= 13 else 'fef2f2'}; border:{'2px solid #84e1bc' if self.refundable and self.diffDays >= 13 else '1px solid #fecaca'}; border-radius:12px;">
                                     <tr>
                                         <td style="padding:15px;">
                                             <table role="presentation" cellpadding="0" cellspacing="0">
@@ -405,16 +414,25 @@ class create_email:
                                                     <td width="50" valign="top" align="center">
                                                         <table role="presentation" cellpadding="0" cellspacing="0">
                                                             <tr>
-                                                                <td align="center" style="background:#{'bbf7d0' if self.refundable else 'fbd5d5'}; width:44px; height:44px; border-radius:50%; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-                                                                    <img src="https://rosedenedirect.com/email/{'check-green.png' if self.refundable else 'x.png'}" width="20" height="20" alt="" style="display:block;">
+                                                                <td align="center" style="background:#{'bbf7d0' if self.refundable and self.diffDays >= 13 else 'fecaca'}; width:44px; height:44px; border-radius:50%; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                                                                    <img src="https://rosedenedirect.com/email/{'check-green.png' if self.refundable and self.diffDays >= 13 else 'x.png'}" width="20" height="20" alt="" style="display:block;">
                                                                 </td>
                                                             </tr>
                                                         </table>
                                                     </td>
                                                     <td style="padding-left: 15px;">
-                                                        <p style="color:#374151; font-size:14px; margin:0 0 5px 0;">Refundable Booking</p>
+                                                        <p style="color:#374151; font-size:14px; margin:0 0 5px 0;">
+                                                            {'Refundable Booking — But the Refund Window Has Passed' if self.refundable and self.diffDays < 13 else 'Refundable Booking' if self.refundable else 'Non-Refundable Booking'}
+                                                        </p>
+
                                                         <p style="color:#6b7280; font-size:12px; margin:0;">
-                                                            {'You are eligible for a refund if canceled 2 weeks before your check-in date.' if self.refundable else 'This booking cannot be refunded after cancellation.'}
+                                                            {(
+                                                                "You are eligible for a refund if canceled 2 weeks before your check-in date."
+                                                                if self.refundable and self.diffDays >= 13 else
+                                                                "This booking was refundable, but the 14-day cancellation window has expired."
+                                                                if self.refundable else
+                                                                "This booking cannot be refunded after cancellation."
+                                                            )}
                                                         </p>
                                                     </td>
                                                 </tr>
@@ -424,6 +442,7 @@ class create_email:
                                 </table>
                             </td>
                         </tr>
+
                         <tr>
                         <td style="padding: 20px 0" class="booking-section">
                             <table role="presentation" width="100%" style="background:rgba(35,52,65,0.1); border-radius:12px; padding:20px;" cellpadding="0" cellspacing="0">
