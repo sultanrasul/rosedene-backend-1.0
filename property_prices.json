@@ -4,18 +4,12 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "2470d9c692ab4945843609693886a79b",
+        "ResponseID": "ddee8b6cee0344b8b90782429be8e277",
         "Prices": {
             "@PropertyID": "3069140",
             "Season": [
                 {
-                    "@DateFrom": "2025-07-11",
-                    "@DateTo": "2025-07-12",
-                    "Price": "389.0000",
-                    "Extra": "60.0000"
-                },
-                {
-                    "@DateFrom": "2025-07-13",
+                    "@DateFrom": "2025-07-14",
                     "@DateTo": "2025-07-17",
                     "Price": "349.0000",
                     "Extra": "60.0000"
@@ -161,11 +155,11 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "6a65a4c6f2c44596ac18638c1be28277",
+        "ResponseID": "9ff3c6b7c2fa4e8fbb3e85f38f86aa15",
         "Prices": {
             "@PropertyID": "3070529",
             "Season": {
-                "@DateFrom": "2025-07-11",
+                "@DateFrom": "2025-07-14",
                 "@DateTo": "2025-09-30",
                 "Price": "479.0000",
                 "Extra": "0"
@@ -178,18 +172,12 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "0e5e42c237cb4b91820128776bbb89a1",
+        "ResponseID": "d5001bebf6b945ad8d7874a1b4c43301",
         "Prices": {
             "@PropertyID": "3070534",
             "Season": [
                 {
-                    "@DateFrom": "2025-07-11",
-                    "@DateTo": "2025-07-12",
-                    "Price": "389.0000",
-                    "Extra": "60.0000"
-                },
-                {
-                    "@DateFrom": "2025-07-13",
+                    "@DateFrom": "2025-07-14",
                     "@DateTo": "2025-07-17",
                     "Price": "349.0000",
                     "Extra": "60.0000"
@@ -335,18 +323,12 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "835b1513b6804eff952c2e8d25474966",
+        "ResponseID": "71a190d9411d4424a51719e073d0bd93",
         "Prices": {
             "@PropertyID": "3070536",
             "Season": [
                 {
-                    "@DateFrom": "2025-07-11",
-                    "@DateTo": "2025-07-12",
-                    "Price": "389.0000",
-                    "Extra": "60.0000"
-                },
-                {
-                    "@DateFrom": "2025-07-13",
+                    "@DateFrom": "2025-07-14",
                     "@DateTo": "2025-07-17",
                     "Price": "349.0000",
                     "Extra": "60.0000"
@@ -492,11 +474,11 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "bd2de3cc8752457e8ccf02f5401d979c",
+        "ResponseID": "f9f44faad3ff495487c6cecb33e0a65a",
         "Prices": {
             "@PropertyID": "3070531",
             "Season": {
-                "@DateFrom": "2025-07-11",
+                "@DateFrom": "2025-07-14",
                 "@DateTo": "2025-09-30",
                 "Price": "279.0000",
                 "Extra": "60.0000"
@@ -509,18 +491,12 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "e9a0590e14624cd4b7bac4d78ba0865d",
+        "ResponseID": "9d0864c3b19e44db99cc2494f7df39e7",
         "Prices": {
             "@PropertyID": "3070533",
             "Season": [
                 {
-                    "@DateFrom": "2025-07-11",
-                    "@DateTo": "2025-07-12",
-                    "Price": "279.0000",
-                    "Extra": "60.0000"
-                },
-                {
-                    "@DateFrom": "2025-07-13",
+                    "@DateFrom": "2025-07-14",
                     "@DateTo": "2025-07-17",
                     "Price": "279.0000",
                     "Extra": "60.0000"
@@ -666,11 +642,11 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "2806bb446924460aaf49754d339a5f8c",
+        "ResponseID": "2c02c33697304247b692c7665b182427",
         "Prices": {
             "@PropertyID": "3070540",
             "Season": {
-                "@DateFrom": "2025-07-11",
+                "@DateFrom": "2025-07-14",
                 "@DateTo": "2025-09-30",
                 "Price": "279.0000",
                 "Extra": "60.0000"
@@ -683,18 +659,12 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "fa00822a4a2b49d8bee64dd93ed4c929",
+        "ResponseID": "c879299d259147fd83df01c8e7c22b08",
         "Prices": {
             "@PropertyID": "3070538",
             "Season": [
                 {
-                    "@DateFrom": "2025-07-11",
-                    "@DateTo": "2025-07-12",
-                    "Price": "399.0000",
-                    "Extra": "60.0000"
-                },
-                {
-                    "@DateFrom": "2025-07-13",
+                    "@DateFrom": "2025-07-14",
                     "@DateTo": "2025-07-17",
                     "Price": "379.0000",
                     "Extra": "60.0000"
@@ -840,18 +810,12 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "1ad76812d5c94c61a4b3dc2544b9ba0e",
+        "ResponseID": "03f1a6cf5bcd42bb8578a2d7b4ac55d6",
         "Prices": {
             "@PropertyID": "3070537",
             "Season": [
                 {
-                    "@DateFrom": "2025-07-11",
-                    "@DateTo": "2025-07-12",
-                    "Price": "399.0000",
-                    "Extra": "60.0000"
-                },
-                {
-                    "@DateFrom": "2025-07-13",
+                    "@DateFrom": "2025-07-14",
                     "@DateTo": "2025-07-17",
                     "Price": "379.0000",
                     "Extra": "60.0000"
@@ -997,11 +961,11 @@
             "@ID": "0",
             "#text": "Success"
         },
-        "ResponseID": "36541f145d3a4161bb57efa373ba23d7",
+        "ResponseID": "1be8b84f6b9547bb85b8c98784e5106a",
         "Prices": {
             "@PropertyID": "3070530",
             "Season": {
-                "@DateFrom": "2025-07-11",
+                "@DateFrom": "2025-07-14",
                 "@DateTo": "2025-09-30",
                 "Price": "279.0000",
                 "Extra": "60.0000"
