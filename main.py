@@ -101,6 +101,7 @@ api_endpoint = "https://new.rentalsunited.com/api/handler.ashx"
 
 # This gives back the availability of all properties within the users date range
 @app.route('/blocked_apartments', methods=['POST'])
+# @cache.memoize(timeout=300)
 def check_blocked_apartments():
 
 
@@ -137,6 +138,16 @@ def check_blocked_apartments():
                 apartment['Prices'] = apartment_prices['Prices']  # Add the list of prices for this apartment
             else:
                 apartment['Prices'] = 'N/A'  # Default to 'N/A' if no price is found
+
+        # Now add the prices to each apartment and include the overlap logic
+        for apartment in properties['blocked']:
+            apartment_prices = prices[str(apartment['id'])]
+            if apartment_prices['Prices']:
+                apartment['Prices'] = apartment_prices['Prices']  # Add the list of prices for this apartment
+            else:
+                apartment['Prices'] = 'N/A'  # Default to 'N/A' if no price is found
+
+        print(properties)
 
         return jsonify({'properties': properties})
     
@@ -689,10 +700,7 @@ def cancel_booking():
         # Get booking details from Rentals United
         try:
             reservation = Pull_GetReservationByID_RQ(username, password, booking_ref)
-            response = requests.post(api_endpoint, 
-                                   data=reservation.serialize_request(), 
-                                   headers={"Content-Type": "application/xml"},
-                                   timeout=10)
+            response = requests.post(api_endpoint, data=reservation.serialize_request(), headers={"Content-Type": "application/xml"})
             
             if response.status_code != 200:
                 logging.error({
