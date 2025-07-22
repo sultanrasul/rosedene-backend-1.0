@@ -12,8 +12,7 @@ import traceback
 
 email_sender = create_email(
     name="Sultan Rasul",
-    breakdown_html_rows="breakdown_html_rows",
-    clientPrice="1000",
+    clientPrice=1000,
     booking_reference="134523451",
     date_from="01/01/01",
     date_to="01/01/01",
@@ -24,10 +23,11 @@ email_sender = create_email(
     childrenAges=[],
     nights=2,
     refundable=True,
-    email="sultanrasul5@outlook.com",
+    email="sultanrasul5@gmail.com",
     specialRequests="",
     cancel=False,
-    diffDays=15
+    diffDays=15,
+    ruPrice=900
 )
 
 email_sender.send_email(os.getenv('email'))

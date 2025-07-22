@@ -919,7 +919,8 @@ def cancel_booking():
             # Create and send email
             email_sender = create_email(
                 name=name,
-                breakdown_html_rows=breakdown_html_rows,
+                # breakdown_html_rows=breakdown_html_rows,
+                ruPrice=ruPrice,
                 clientPrice=clientPrice,
                 booking_reference=reservationID,
                 date_from=date_from_str,
@@ -958,6 +959,23 @@ def cancel_booking():
         logging.exception("🔥 Uncaught error in cancel_booking route")
         return jsonify({'error': 'Something went wrong processing the cancel request'}), 500
     
+def cancel_payment_intent_with_error(payment_intent_id, error_code, error_text):
+    try:
+        stripe.PaymentIntent.modify(
+            payment_intent_id,
+            metadata={
+                "error_code": error_code,
+                "error_text": error_text
+            }
+        )
+        stripe.PaymentIntent.cancel(
+            payment_intent_id,
+            cancellation_reason="booking_failed"
+        )
+        logging.info(f"❌ PaymentIntent {payment_intent_id} cancelled due to: {error_code} - {error_text}")
+    except Exception as e:
+        logging.exception(f"⚠️ Failed to cancel or update metadata for PaymentIntent {payment_intent_id}")    
+
 @app.route('/webhook', methods=['POST'])
 def webhook():
     try:
@@ -1010,6 +1028,7 @@ def webhook():
             missing_fields = [field for field in required_fields if field not in meta_data]
             if missing_fields:
                 logging.error(f"⚠️ Missing metadata fields: {', '.join(missing_fields)}")
+                cancel_payment_intent_with_error(payment_intent_id, -1, f"⚠️ Missing metadata fields: {', '.join(missing_fields)}")
                 return jsonify({"error": f"Missing required metadata: {', '.join(missing_fields)}"}), 400
 
             try:
@@ -1026,11 +1045,13 @@ def webhook():
                     date_to_obj = datetime.strptime(meta_data["date_to"], "%d/%m/%Y")
                 except ValueError as e:
                     logging.exception(f"⚠️ Invalid date format in metadata")
+                    cancel_payment_intent_with_error(payment_intent_id, -1, "⚠️ Invalid date format in metadata")
                     return jsonify({"error": "Invalid date format"}), 400
                 
                 # Validate date range
                 if (date_to_obj - date_from_obj).days != nights:
                     logging.error(f"⚠️ Date range doesn't match nights: {nights}")
+                    cancel_payment_intent_with_error(payment_intent_id, -1, f"⚠️ Date range doesn't match nights: {nights}")
                     return jsonify({"error": "Date range mismatch"}), 400
                     
                 # Process children ages
@@ -1059,13 +1080,16 @@ def webhook():
                 # Validate contact info
                 if not name:
                     logging.error("⚠️ Missing guest name")
+                    cancel_payment_intent_with_error(payment_intent_id, -1, f"⚠️ Missing guest name")
                     return jsonify({"error": "Missing guest name"}), 400
                 if not email:
                     logging.error("⚠️ Missing email")
+                    cancel_payment_intent_with_error(payment_intent_id, -1, f"⚠️ Missing email")
                     return jsonify({"error": "Missing email"}), 400
 
             except (ValueError, TypeError) as e:
                 logging.exception("⚠️ Metadata parsing error")
+                cancel_payment_intent_with_error(payment_intent_id, -1, f"⚠️ Metadata parsing error")
                 return jsonify({"error": "Invalid metadata values"}), 400
 
             # Calculate prices
@@ -1083,6 +1107,7 @@ def webhook():
                 )
             except Exception as e:
                 logging.exception("⚠️ Price calculation failed")
+                cancel_payment_intent_with_error(payment_intent_id, -1, f"⚠️ Price calculation failed")
                 return jsonify({"error": "Price calculation error"}), 500
 
             # Prepare booking data for RU
@@ -1126,11 +1151,18 @@ def webhook():
                 
                 if response.status_code != 200:
                     logging.error(f"⚠️ RU API failed with status {response.status_code}")
+                    
+                    cancel_payment_intent_with_error(payment_intent_id, status_code, "⚠️ RU API failed")
+
+
                     return jsonify({"error": "Reservation service unavailable"}), 503
                 
                 jsonResponse = reservation.booking_reference(response.text)
             except Exception as e:
                 logging.exception("⚠️ RU reservation creation failed")
+
+                cancel_payment_intent_with_error(payment_intent_id, status_code, "⚠️ RU reservation creation failed")
+
                 return jsonify({"error": "Reservation creation failed"}), 500
 
             # Process RU response
@@ -1142,17 +1174,9 @@ def webhook():
                 if status_code != 0:
                     # Cancel payment intent if RU fails
                     try:
-                        stripe.PaymentIntent.modify(
-                            payment_intent_id, 
-                            metadata={
-                                "ru_error_code": status_code, 
-                                "ru_error_text": status_text
-                            }
-                        )
-                        stripe.PaymentIntent.cancel(
-                            payment_intent_id, 
-                            cancellation_reason="booking_failed"
-                        )
+
+                        cancel_payment_intent_with_error(payment_intent_id, status_code, status_text)
+
                     except Exception as e:
                         logging.exception(f"⚠️ Failed to cancel payment intent {payment_intent_id}")
 
@@ -1187,46 +1211,7 @@ def webhook():
                 return jsonify({"error": "Payment capture failed"}), 500
 
             # Prepare email content
-            breakdown = []
-            try:
-                if nights > 0:
-                    per_night_price = round(ruPrice / nights, 2)
-                    breakdown.append({
-                        "label": f"£{per_night_price} x {nights} nights",
-                        "amount": round(ruPrice, 2)
-                    })
-
-                    if refundable:
-                        refundable_rate_fee = Pull_ListPropertyPrices_RQ.calculate_refundable_rate_fee(ruPrice)
-                        breakdown.append({
-                            "label": "Refundable rate",
-                            "amount": refundable_rate_fee
-                        })
-            except ZeroDivisionError:
-                logging.warning("⚠️ Zero nights in booking")
-                breakdown.append({
-                    "label": "Total booking amount",
-                    "amount": round(ruPrice, 2)
-                })
-
-            # Generate HTML for email
-            breakdown_html_rows = ""
-            for index, item in enumerate(breakdown):
-                label = item["label"]
-                amount = f"£{item['amount']:.2f}"
-                breakdown_html_rows += f"""
-                    <tr>
-                        <td style="color:#4b5563; font-size:15px;">{label}</td>
-                        <td align="right" style="color:#374151; font-size:16px;">{amount}</td>
-                    </tr>
-                """
-                if index < len(breakdown) - 1:
-                    breakdown_html_rows += """
-                    <tr>
-                        <td colspan="2" height="15"></td>
-                    </tr>
-                    """
-
+            
             # Calculate days until check-in
             today = datetime.today()
             diffDays = (date_from_obj - today).days
@@ -1237,8 +1222,9 @@ def webhook():
                 
                 email_sender = create_email(
                     name=name,
-                    breakdown_html_rows=breakdown_html_rows,
+                    # breakdown_html_rows=breakdown_html_rows,
                     clientPrice=clientPrice,
+                    ruPrice=ruPrice,
                     booking_reference=booking_reference,
                     date_from=date_from_obj.strftime("%d %b %Y"),
                     date_to=date_to_obj.strftime("%d %b %Y"),

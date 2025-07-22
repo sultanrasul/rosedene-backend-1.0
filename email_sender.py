@@ -7,11 +7,13 @@ import brevo_python
 from brevo_python.rest import ApiException
 
 import traceback
+import logging
+
+from property_price import Pull_ListPropertyPrices_RQ
 
 class create_email:
-    def __init__(self, name, breakdown_html_rows, clientPrice, booking_reference , date_from, date_to,apartmentName, phone, adults, children, childrenAges, nights, refundable, email, specialRequests, cancel, diffDays):
+    def __init__(self, name, clientPrice, booking_reference , date_from, date_to,apartmentName, phone, adults, children, childrenAges, nights, refundable, email, specialRequests, cancel, diffDays, ruPrice):
         self.name = name
-        self.breakdown_html_rows = breakdown_html_rows
         self.clientPrice = clientPrice
         self.booking_reference = booking_reference
         self.apartmentName = apartmentName
@@ -27,6 +29,7 @@ class create_email:
         self.specialRequests = specialRequests
         self.cancel = cancel
         self.diffDays = diffDays
+        self.ruPrice = ruPrice
 
 
     # Currently using brevo for this
@@ -120,7 +123,50 @@ class create_email:
 
     def create_html(self):
 
-        cancelled_html = f"""
+        # Create the breakdown of costs
+        breakdown = []
+        try:
+            if self.nights > 0:
+                per_night_price = round(self.ruPrice / self.nights, 2)
+                breakdown.append({
+                    "label": f"£{per_night_price} x {self.nights} nights",
+                    "amount": round(self.ruPrice, 2)
+                })
+
+                if self.refundable:
+                    refundable_rate_fee = Pull_ListPropertyPrices_RQ.calculate_refundable_rate_fee(self.ruPrice)
+                    breakdown.append({
+                        "label": "Refundable rate",
+                        "amount": refundable_rate_fee
+                    })
+        except ZeroDivisionError:
+            logging.warning("⚠️ Zero nights in booking")
+            breakdown.append({
+                "label": "Total booking amount",
+                "amount": round(self.ruPrice, 2)
+            })
+
+        # Generate HTML for email
+        breakdown_html_rows = ""
+        for index, item in enumerate(breakdown):
+            label = item["label"]
+            amount = f"£{item['amount']:.2f}"
+            breakdown_html_rows += f"""
+                <tr>
+                    <td style="color:#4b5563; font-size:15px;">{label}</td>
+                    <td align="right" style="color:#374151; font-size:16px;">{amount}</td>
+                </tr>
+            """
+            if index < len(breakdown) - 1:
+                breakdown_html_rows += """
+                <tr>
+                    <td colspan="2" height="15"></td>
+                </tr>
+                """
+
+
+
+        booking_details_heading = f"""
             <tr>
                 <td style="padding: 40px 0;">
                     <table width="100%" style="text-align: center;">
@@ -355,7 +401,7 @@ class create_email:
                     {greeting_html}
 
                     <table role="presentation" width="100%" style="background: #ffffff; border: 1px solid #d1d5db; border-radius: 12px; margin-top: 20px; padding: 0 20px 20px" class="booking-details" cellpadding="0" cellspacing="0">
-                        {cancelled_html}
+                        {booking_details_heading}
 
                         <tr>
                         <td style="padding:20px 0;">
@@ -368,7 +414,7 @@ class create_email:
                             <tr>
                                 <td>
                                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                                        {self.breakdown_html_rows}
+                                        {breakdown_html_rows}
                                     </table>
                                     <hr style="border:none; border-top:1px solid #e5e7eb; margin:25px 0;">
                                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
