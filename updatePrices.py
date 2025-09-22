@@ -58,7 +58,7 @@ property_ids = list(apartment_ids.keys())
 prices = Pull_ListPropertyPrices_RQ.get_prices_for_multiple_properties_save_to_file(
         username, password, property_ids, 
         date_from=datetime(day=day, month=month, year=year), 
-        date_to=datetime(day=day, month=month, year=year) + relativedelta(years=2),
+        date_to=datetime(day=day, month=month, year=year) + relativedelta(years=5),
         api_endpoint=api_endpoint
 )
 

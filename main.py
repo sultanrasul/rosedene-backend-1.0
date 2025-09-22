@@ -303,7 +303,7 @@ def check_calendar():
         
         # Create date range
         date_from = datetime.today()
-        date_to = date_from + relativedelta(years=2)
+        date_to = date_from + relativedelta(years=5)
 
         # Validate property ID format
         try:
