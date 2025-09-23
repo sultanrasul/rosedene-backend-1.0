@@ -7,6 +7,7 @@ import stripe.webhook
 from add_booking import Push_PutConfirmedReservationMulti_RQ
 from cancel_booking import Push_CancelReservation_RQ
 from get_booking import Pull_GetReservationByID_RQ
+from database import create_provisional_booking, confirm_booking, payment_captured, cancel_booking_by_ru_reference
 from location_check import Pull_ListPropertiesBlocks_RQ
 from property_check import Pull_ListPropertyAvailabilityCalendar_RQ
 from property_price import Pull_ListPropertyPrices_RQ
@@ -429,6 +430,7 @@ def create_checkout():
             return jsonify({"error": "adults and children must be integers"}), 400
 
         # Validate contact info
+        user_id = data.get("user_id", "NULL")
         name = data['name'].strip()
         phone = data['phone'].strip()
         email = data['email'].strip()
@@ -544,6 +546,7 @@ def create_checkout():
                     "special_requests": specialRequests,
                     "refundable": refundable,
                     "booking_reference": "",
+                    "user_id": user_id
                 },
                 description=f"Booking for {apartment_ids[property_id]}",
                 capture_method='manual'
@@ -731,6 +734,8 @@ def cancel_booking():
                     "severity": "WARNING"
                 })
                 return jsonify({'error': status_text}), 420 if status_code == 28 else 400
+
+            cancel_booking_by_ru_reference(booking_ref)
 
             # Extract reservation data
             reservation_data = booking_data["Pull_GetReservationByID_RS"]["Reservation"]
@@ -970,7 +975,7 @@ def cancel_payment_intent_with_error(payment_intent_id, error_code, error_text):
         )
         stripe.PaymentIntent.cancel(
             payment_intent_id,
-            cancellation_reason="booking_failed"
+            cancellation_reason="abandoned"
         )
         logging.info(f"❌ PaymentIntent {payment_intent_id} cancelled due to: {error_code} - {error_text}")
     except Exception as e:
@@ -1038,6 +1043,7 @@ def webhook():
                 refundable = meta_data["refundable"].lower() == "true"
                 children = int(meta_data["children"])
                 nights = int(meta_data["nights"])
+                user_id = meta_data.get("user_id", "NULL")
                 
                 # Parse dates
                 try:
@@ -1122,6 +1128,35 @@ def webhook():
             }
             booking_info = json.dumps(booking_data, indent=2)
 
+            #Adding Reserveration details to Supabase
+            try: 
+                provisional = create_provisional_booking(
+                    name=name,
+                    user_id=user_id,
+                    email=email,
+                    phone=phone,
+                    zip_code=postal_code,
+                    country=country,
+                    apartment_id=apartment_id,
+                    date_from = date_from_obj.isoformat(), 
+                    date_to = date_to_obj.isoformat(),    
+                    nights=nights,
+                    refundable=refundable,
+                    special_requests=special_requests,
+                    adults=adults,
+                    children=children,
+                    children_ages=childrenAges,
+                    client_price=clientPrice,
+                    ru_price=ruPrice,
+                    payment_intent_id=payment_intent_id
+                )
+            except Exception as e:
+                logging.exception("⚠️ Failed To add Reserveration details to Supabase")
+
+                cancel_payment_intent_with_error(payment_intent_id, -10, "⚠️ RU reservation creation failed")
+
+                return jsonify({"error": "Reservation creation failed"}), 500
+
             # Add Booking to Rentals United
             try:
                 reservation = Push_PutConfirmedReservationMulti_RQ(
@@ -1184,6 +1219,8 @@ def webhook():
                     return jsonify({"error": status_text}), 409
                     
                 booking_reference = jsonResponse["Push_PutConfirmedReservationMulti_RS"]["ReservationID"]
+                confirm_booking(provisional, ru_booking_reference=booking_reference)
+
             except (KeyError, TypeError) as e:
                 logging.exception("⚠️ Invalid RU response format")
                 return jsonify({"error": "Invalid reservation response"}), 500
@@ -1204,8 +1241,11 @@ def webhook():
                     "booking_reference": booking_reference,
                     "payment_intent_id": payment_intent_id 
                 })
+
+                payment_captured(provisional)
             except stripe.error.StripeError as e:
                 logging.exception(f"⚠️ Payment capture failed for {payment_intent_id}")
+                payment_captured(provisional, "failed")
                 # Critical error - booking created but payment not captured!
                 # Add alerting here (email/sms to admin)
                 return jsonify({"error": "Payment capture failed"}), 500
