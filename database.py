@@ -43,21 +43,39 @@ def create_provisional_booking( *, user_id=None, name, email, phone=None, zip_co
     }
 
     response = supabase.table("bookings").insert(data).execute()
-    return response.data
+
+    booking_id = response.data[0]["id"]
+    print("✅ Provisional booking created:", booking_id)
+
+    return booking_id
 
 
-def confirm_booking(booking_id: str, ru_booking_reference: str):
+def confirm_booking(booking_id: str, ru_booking_reference: str, status = "confirmed"):
     """
     Confirm a booking by setting RU reference and updating status.
     """
     update_data = {
         "ru_booking_reference": ru_booking_reference,
-        "ru_status": "confirmed",
+        "ru_status": status,
         "updated_at": datetime.utcnow().isoformat(),
     }
 
     response = supabase.table("bookings").update(update_data).eq("id", booking_id).execute()
     return response.data
+
+def cancel_booking_by_ru_reference(ru_booking_reference: str, status="canceled"):
+    """
+    Cancel a booking by RU booking reference instead of internal UUID.
+    """
+    update_data = {
+        "ru_status": status,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    response = supabase.table("bookings").update(update_data).eq("ru_booking_reference", ru_booking_reference).execute()
+
+    return response.data
+
 
 def payment_captured(booking_id: str, payment_status="confirmed"):
     """
@@ -93,9 +111,3 @@ def payment_captured(booking_id: str, payment_status="confirmed"):
 #     payment_intent_id="pi_123456"
 # )
 # print("Provisional booking:", provisional)
-
-# Later, after RU confirmation
-booking_id = "b132555e-66dd-49ae-a642-7468229581d6"
-# confirmed = confirm_booking(booking_id, ru_booking_reference="RU12345ABC")
-confirmed = payment_captured(booking_id)
-print("Confirmed booking:", confirmed)
