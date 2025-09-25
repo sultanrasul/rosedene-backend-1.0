@@ -7,7 +7,7 @@ import stripe.webhook
 from add_booking import Push_PutConfirmedReservationMulti_RQ
 from cancel_booking import Push_CancelReservation_RQ
 from get_booking import Pull_GetReservationByID_RQ
-from database import create_provisional_booking, confirm_booking, payment_captured, cancel_booking_by_ru_reference
+from database import create_provisional_booking, confirm_booking, payment_captured, cancel_booking_by_ru_reference, update_booking
 from location_check import Pull_ListPropertiesBlocks_RQ
 from property_check import Pull_ListPropertyAvailabilityCalendar_RQ
 from property_price import Pull_ListPropertyPrices_RQ
@@ -430,7 +430,7 @@ def create_checkout():
             return jsonify({"error": "adults and children must be integers"}), 400
 
         # Validate contact info
-        user_id = data.get("user_id", "NULL")
+        user_id = data.get("user_id", None)
         name = data['name'].strip()
         phone = data['phone'].strip()
         email = data['email'].strip()
@@ -519,6 +519,30 @@ def create_checkout():
             logging.error(f"❌ Price calculation failed: {e}")
             return jsonify({"error": "Price calculation error"}), 500
 
+        try: 
+            provisional = create_provisional_booking(
+                name=name,
+                user_id=user_id,
+                email=email,
+                phone=phone,
+                apartment_id=property_id,
+                date_from = date_from_obj.isoformat(), 
+                date_to = date_to_obj.isoformat(),    
+                nights=nights,
+                refundable=refundable,
+                special_requests=specialRequests,
+                adults=adults,
+                children=children,
+                children_ages=childrenAges,
+                client_price=customerPrice,
+                ru_price=basePrice,
+                payment_intent_id=None
+            )
+        except Exception as e:
+            logging.exception("⚠️ Failed To add Reserveration details to Supabase")
+
+            return jsonify({"error": "Reservation creation failed"}), 500
+
         # Create payment intent
         try:
             display_date = f'{date_from["day"]}/{date_from["month"]}/{date_from["year"]} - {date_to["day"]}/{date_to["month"]}/{date_to["year"]}'
@@ -531,26 +555,14 @@ def create_checkout():
                 currency='gbp',
                 payment_method_types=['card'],
                 metadata={
-                    "apartment_id": property_id,
-                    "apartment_name": apartment_ids[property_id],
-                    "date_from": f"{date_from['day']}/{date_from['month']}/{date_from['year']}",
-                    "date_to": f"{date_to['day']}/{date_to['month']}/{date_to['year']}",
-                    "adults": adults,
-                    "children": children,
-                    "children_ages": ",".join(str(age) for age in childrenAges),
-                    "nights": nights,
-                    "price": customerPrice,
-                    "name": name,
-                    "email": email,
-                    "phone_number": phone,
-                    "special_requests": specialRequests,
-                    "refundable": refundable,
-                    "booking_reference": "",
+                    "booking_uuid": provisional,
                     "user_id": user_id
                 },
                 description=f"Booking for {apartment_ids[property_id]}",
                 capture_method='manual'
             )
+            update_booking(provisional, payment_intent_id=payment_intent.id, client_secret=payment_intent.client_secret)
+
         except stripe.error.StripeError as e:
             logging.error(f"❌ Stripe API error: {e.user_message if hasattr(e, 'user_message') else str(e)}")
             return jsonify({"error": "Payment processing error"}), 500
@@ -572,6 +584,7 @@ def create_checkout():
         })
         return jsonify({
             'clientSecret': payment_intent.client_secret,
+            'booking_uuid': provisional,
             'amount': f"{customerPrice:.2f}"
         })
     
@@ -1043,7 +1056,7 @@ def webhook():
                 refundable = meta_data["refundable"].lower() == "true"
                 children = int(meta_data["children"])
                 nights = int(meta_data["nights"])
-                user_id = meta_data.get("user_id", "NULL")
+                user_id = meta_data.get("user_id", None)
                 
                 # Parse dates
                 try:
