@@ -10,7 +10,7 @@ key = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 
-def create_provisional_booking( *, user_id=None, name, email, phone=None, zip_code=None, country=None, apartment_id, date_from, date_to, nights, adults, children=0, children_ages=None, special_requests=None, refundable=False, client_price=0.0, ru_price=None, payment_intent_id=None):
+def create_provisional_booking( *, user_id=None, name, email, phone=None, zip_code=None, country=None, apartment_id, date_from, date_to, nights, adults, children=0, children_ages=None, special_requests=None, refundable=False, client_price=0.0, ru_price=None, payment_intent_id=None, client_secret=None):
     """
     Create a provisional booking in the bookings table.
     RU booking reference is left empty until confirmation.
@@ -37,6 +37,7 @@ def create_provisional_booking( *, user_id=None, name, email, phone=None, zip_co
         "ru_booking_reference": None,
         "ru_status": "pending",
         "payment_intent_id": payment_intent_id,
+        "client_secret": client_secret,
         "payment_status": "pending",
         "created_at": datetime.utcnow().isoformat(),
         "updated_at": datetime.utcnow().isoformat(),
@@ -48,6 +49,28 @@ def create_provisional_booking( *, user_id=None, name, email, phone=None, zip_co
     print("✅ Provisional booking created:", booking_id)
 
     return booking_id
+
+def update_booking(booking_id: str, **updates):
+    """
+    Update any fields in a booking row by booking_id.
+    Pass only the fields you want to change.
+    Example:
+        update_booking("1234-uuid", name="New Name", payment_status="failed")
+    """
+    if not updates:
+        raise ValueError("No updates provided")
+
+    # Always refresh updated_at
+    updates["updated_at"] = datetime.utcnow().isoformat()
+
+    response = supabase.table("bookings").update(updates).eq("id", booking_id).execute()
+
+    if not response.data:
+        print(f"⚠️ No booking found with id {booking_id}")
+        return None
+
+    print(f"✅ Booking {booking_id} updated:", updates)
+    return response.data[0]
 
 
 def confirm_booking(booking_id: str, ru_booking_reference: str, status = "confirmed"):
