@@ -72,19 +72,41 @@ def update_booking(booking_id: str, **updates):
     print(f"✅ Booking {booking_id} updated:", updates)
     return response.data[0]
 
-
-def confirm_booking(booking_id: str, ru_booking_reference: str, status = "confirmed"):
+def update_booking_ru_ref(booking_reference: str, **updates):
     """
-    Confirm a booking by setting RU reference and updating status.
+    Update any fields in a booking row by booking_id.
+    Pass only the fields you want to change.
+    Example:
+        update_booking("1234-uuid", name="New Name", payment_status="failed")
     """
-    update_data = {
-        "ru_booking_reference": ru_booking_reference,
-        "ru_status": status,
-        "updated_at": datetime.utcnow().isoformat(),
-    }
+    if not updates:
+        raise ValueError("No updates provided")
 
-    response = supabase.table("bookings").update(update_data).eq("id", booking_id).execute()
-    return response.data
+    # Always refresh updated_at
+    updates["updated_at"] = datetime.utcnow().isoformat()
+
+    response = supabase.table("bookings").update(updates).eq("ru_booking_reference", booking_reference).execute()
+
+    if not response.data:
+        print(f"⚠️ No booking found with id {booking_reference}")
+        return None
+
+    print(f"✅ Booking {booking_reference} updated:", updates)
+    return response.data[0]
+
+def get_booking_uuid_data(booking_id: str):
+    response = supabase.table("bookings").select("*").eq("id", booking_id).execute()
+
+    if response.data and len(response.data) > 0:
+        return response.data[0]  # first match
+    return None
+
+def get_booking_ru_ref_email(ru_booking_reference: str, email: str):
+    response = supabase.table("bookings").select("*").eq("ru_booking_reference", ru_booking_reference).eq("email", email).execute()
+    
+    if response.data and len(response.data) > 0:
+        return response.data[0]  # first match
+    return None
 
 def cancel_booking_by_ru_reference(ru_booking_reference: str, status="canceled"):
     """
@@ -100,17 +122,22 @@ def cancel_booking_by_ru_reference(ru_booking_reference: str, status="canceled")
     return response.data
 
 
-def payment_captured(booking_id: str, payment_status="confirmed"):
+def get_booking_ru_ref_email(ru_booking_reference: str, email: str):
     """
-    Confirm a booking by setting RU reference and updating status.
+    Retrieve a booking by both ru_booking_reference and email.
+    Returns the booking data dictionary or None if not found.
     """
-    update_data = {
-        "payment_status": payment_status,
-        "updated_at": datetime.utcnow().isoformat(),
-    }
+    response = (
+        supabase.table("bookings")
+        .select("*")
+        .eq("ru_booking_reference", ru_booking_reference)
+        .eq("email", email)
+        .execute()
+    )
 
-    response = supabase.table("bookings").update(update_data).eq("id", booking_id).execute()
-    return response.data
+    if response.data and len(response.data) > 0:
+        return response.data[0]  # first match
+    return None
 
 
 
@@ -134,3 +161,6 @@ def payment_captured(booking_id: str, payment_status="confirmed"):
 #     payment_intent_id="pi_123456"
 # )
 # print("Provisional booking:", provisional)
+
+# print(get_booking_ru_ref_email(ru_booking_reference=144581979, email="sultanrasul5+test@gmail.com"))
+print(update_booking_ru_ref(booking_reference=144581979,ru_status="canceled"))
