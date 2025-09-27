@@ -7,7 +7,7 @@ import stripe.webhook
 from add_booking import Push_PutConfirmedReservationMulti_RQ
 from cancel_booking import Push_CancelReservation_RQ
 from get_booking import Pull_GetReservationByID_RQ
-from database import create_provisional_booking, confirm_booking, payment_captured, cancel_booking_by_ru_reference, update_booking
+from database import *
 from location_check import Pull_ListPropertiesBlocks_RQ
 from property_check import Pull_ListPropertyAvailabilityCalendar_RQ
 from property_price import Pull_ListPropertyPrices_RQ
@@ -282,9 +282,37 @@ def verify_price():
                 logging.error(f"❌ Refund fee calculation failed: {e}")
                 return jsonify({"error": "Refund fee calculation error"}), 500
 
+        # Check availability
+        try:
+            avail_request = Pull_ListPropertyAvailabilityCalendar_RQ(
+                username, password, property_id=property_id,
+                date_from=date_from_obj, 
+                date_to=date_to_obj
+            )
+            response = requests.post(api_endpoint, data=avail_request.serialize_request(),  headers={"Content-Type": "application/xml"})
+                                   
+            if response.status_code != 200:
+                logging.error(f"❌ Availability API failed: {response.status_code}")
+                return jsonify({"error": "Availability service unavailable"}), 503
+                
+            calendar = avail_request.check_availability_calendar(response.text)
+            
+            for day in calendar:
+                if day.get("IsBlocked") == "true":
+                    logging.error(f"❌ Property blocked on {day.get('Date')}")
+                    return jsonify({"error": "Apartment not available for selected dates"}), 409
+                    
+        except requests.exceptions.RequestException as e:
+            logging.error(f"❌ Availability API connection failed: {e}")
+            return jsonify({"error": "Availability service unavailable"}), 503
+        except Exception as e:
+            logging.error(f"❌ Availability check failed: {e}")
+            return jsonify({"error": "Availability check error"}), 500
+
+
         return jsonify({
             "total": f"{client_price:.2f}",
-            "breakdown": breakdown
+            "breakdown": breakdown,
         })
 
     except Exception as e:
@@ -519,6 +547,7 @@ def create_checkout():
             logging.error(f"❌ Price calculation failed: {e}")
             return jsonify({"error": "Price calculation error"}), 500
 
+        # Add data to supabase
         try: 
             provisional = create_provisional_booking(
                 name=name,
@@ -748,7 +777,6 @@ def cancel_booking():
                 })
                 return jsonify({'error': status_text}), 420 if status_code == 28 else 400
 
-            cancel_booking_by_ru_reference(booking_ref)
 
             # Extract reservation data
             reservation_data = booking_data["Pull_GetReservationByID_RS"]["Reservation"]
@@ -849,6 +877,8 @@ def cancel_booking():
             logging.exception(f"❌ Exception cancelling RU booking {booking_ref}")
             return jsonify({'error': f'Failed to cancel reservation: {str(e)}'}), 500
 
+        update_booking_ru_ref(booking_reference=booking_ref,ru_status="canceled")
+
         # Calculate days until check-in
         today = datetime.today()
         diffDays = (date_from_obj - today).days
@@ -876,6 +906,7 @@ def cancel_booking():
                     "refund_status": refund.status,
                     "severity": "INFO"
                 })
+                update_booking_ru_ref(booking_reference=booking_ref,payment_status="refunded")
             except Exception as e:
                 logging.exception(f"❌ Refund failed for payment intent {paymentIntentId}")
                 # Continue even if refund fails - booking is already cancelled in RU
@@ -1040,8 +1071,7 @@ def webhook():
 
             # Extract metadata safely
             meta_data = payment_intent.get('metadata', {})
-            required_fields = ["adults", "children", "apartment_id", "refundable", 
-                              "date_from", "date_to", "nights"]
+            required_fields = ["booking_uuid"]
             
             missing_fields = [field for field in required_fields if field not in meta_data]
             if missing_fields:
@@ -1051,17 +1081,21 @@ def webhook():
 
             try:
                 # Parse metadata values
-                adults = int(meta_data["adults"])
-                apartment_id = int(meta_data["apartment_id"])
-                refundable = meta_data["refundable"].lower() == "true"
-                children = int(meta_data["children"])
-                nights = int(meta_data["nights"])
+                booking_uuid = meta_data["booking_uuid"]
+                booking_data = get_booking_uuid_data(booking_uuid)
                 user_id = meta_data.get("user_id", None)
+
+                adults = booking_data["adults"]
+                apartment_id = int(booking_data["apartment_id"])
+                refundable = booking_data["refundable"]
+                children = int(booking_data["children"])
+                nights = int(booking_data["nights"])
+                childrenAges = booking_data["children_ages"]
                 
                 # Parse dates
                 try:
-                    date_from_obj = datetime.strptime(meta_data["date_from"], "%d/%m/%Y")
-                    date_to_obj = datetime.strptime(meta_data["date_to"], "%d/%m/%Y")
+                    date_from_obj = datetime.strptime(booking_data["date_from"], "%Y-%m-%d")
+                    date_to_obj = datetime.strptime(booking_data["date_to"], "%Y-%m-%d")
                 except ValueError as e:
                     logging.exception(f"⚠️ Invalid date format in metadata")
                     cancel_payment_intent_with_error(payment_intent_id, -1, "⚠️ Invalid date format in metadata")
@@ -1072,40 +1106,18 @@ def webhook():
                     logging.error(f"⚠️ Date range doesn't match nights: {nights}")
                     cancel_payment_intent_with_error(payment_intent_id, -1, f"⚠️ Date range doesn't match nights: {nights}")
                     return jsonify({"error": "Date range mismatch"}), 400
-                    
-                # Process children ages
-                childrenAges = []
-                if children > 0:
-                    children_ages_str = meta_data.get("children_ages", "")
-                    if children_ages_str:
-                        childrenAges = children_ages_str.split(",")
-                    if len(childrenAges) != children:
-                        logging.warning(f"⚠️ Children ages count mismatch: expected {children}, got {len(childrenAges)}")
-                        childrenAges = childrenAges[:children]  # Truncate to match count
                 
                 special_requests = meta_data.get("special_requests", "")
-                name = meta_data.get("name", "")
-                phone = meta_data.get("phone_number", "")
-                email = meta_data.get("email", "")
+                name = booking_data["name"]
+                phone = booking_data["phone"]
+                email = booking_data["email"]
                 
                 # Get billing details as fallback
                 billing_details = charge_obj.get('billing_details', {})
-                name = name or billing_details.get("name", "")
-                phone = phone or billing_details.get("phone", "")
-                email = email or billing_details.get("email", "")
                 country = billing_details.get("address", {}).get("country", "")
                 postal_code = billing_details.get("address", {}).get("postal_code", "")
+                update_booking(booking_id=booking_uuid,zip_code=postal_code, country=country)
                 
-                # Validate contact info
-                if not name:
-                    logging.error("⚠️ Missing guest name")
-                    cancel_payment_intent_with_error(payment_intent_id, -1, f"⚠️ Missing guest name")
-                    return jsonify({"error": "Missing guest name"}), 400
-                if not email:
-                    logging.error("⚠️ Missing email")
-                    cancel_payment_intent_with_error(payment_intent_id, -1, f"⚠️ Missing email")
-                    return jsonify({"error": "Missing email"}), 400
-
             except (ValueError, TypeError) as e:
                 logging.exception("⚠️ Metadata parsing error")
                 cancel_payment_intent_with_error(payment_intent_id, -1, f"⚠️ Metadata parsing error")
@@ -1140,35 +1152,6 @@ def webhook():
                 "country": country
             }
             booking_info = json.dumps(booking_data, indent=2)
-
-            #Adding Reserveration details to Supabase
-            try: 
-                provisional = create_provisional_booking(
-                    name=name,
-                    user_id=user_id,
-                    email=email,
-                    phone=phone,
-                    zip_code=postal_code,
-                    country=country,
-                    apartment_id=apartment_id,
-                    date_from = date_from_obj.isoformat(), 
-                    date_to = date_to_obj.isoformat(),    
-                    nights=nights,
-                    refundable=refundable,
-                    special_requests=special_requests,
-                    adults=adults,
-                    children=children,
-                    children_ages=childrenAges,
-                    client_price=clientPrice,
-                    ru_price=ruPrice,
-                    payment_intent_id=payment_intent_id
-                )
-            except Exception as e:
-                logging.exception("⚠️ Failed To add Reserveration details to Supabase")
-
-                cancel_payment_intent_with_error(payment_intent_id, -10, "⚠️ RU reservation creation failed")
-
-                return jsonify({"error": "Reservation creation failed"}), 500
 
             # Add Booking to Rentals United
             try:
@@ -1232,7 +1215,7 @@ def webhook():
                     return jsonify({"error": status_text}), 409
                     
                 booking_reference = jsonResponse["Push_PutConfirmedReservationMulti_RS"]["ReservationID"]
-                confirm_booking(provisional, ru_booking_reference=booking_reference)
+                update_booking(booking_id=booking_uuid, ru_booking_reference=booking_reference,ru_status="confirmed")
 
             except (KeyError, TypeError) as e:
                 logging.exception("⚠️ Invalid RU response format")
@@ -1255,10 +1238,10 @@ def webhook():
                     "payment_intent_id": payment_intent_id 
                 })
 
-                payment_captured(provisional)
+                update_booking(booking_id=booking_uuid,payment_status="captured")
             except stripe.error.StripeError as e:
                 logging.exception(f"⚠️ Payment capture failed for {payment_intent_id}")
-                payment_captured(provisional, "failed")
+                update_booking(booking_id=booking_uuid,payment_status="failed")
                 # Critical error - booking created but payment not captured!
                 # Add alerting here (email/sms to admin)
                 return jsonify({"error": "Payment capture failed"}), 500
@@ -1354,6 +1337,8 @@ def get_booking():
     booking_ref = request.json.get('booking_ref')
     email = request.json.get('email')
 
+
+
     # can not cache because when canceling a booking I have to check to see if the data is been updated to canceled 
     # cache_key = f"booking:{booking_ref}:{email.lower()}"
     # cached_response = cache.get(cache_key)
@@ -1385,6 +1370,9 @@ def get_booking():
     rentalsUnitedCommentsJson = json.loads(rentalsUnitedComments)
     refundable = bool(rentalsUnitedCommentsJson["refundable"])
 
+    if email.lower() != bookingEmail.lower():
+        return jsonify({'error': statusText}), 420
+    
     # 1 - Confirmed
     # 2 - Canceled
     reservationStatusID = int(jsonResponse["Pull_GetReservationByID_RS"]["Reservation"]["StatusID"])
@@ -1423,8 +1411,6 @@ def get_booking():
             "amount": refundable_rate_fee
         })
 
-    if email.lower() != bookingEmail.lower():
-        return jsonify({'error': statusText}), 420
 
     reservation_data = {
         "reservationStatusID": reservationStatusID,
