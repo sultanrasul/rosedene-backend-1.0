@@ -3,7 +3,7 @@ import xmltodict
 import requests
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 
 class Pull_ListPropertyPrices_RQ:
@@ -31,7 +31,7 @@ class Pull_ListPropertyPrices_RQ:
         return price
 
     @staticmethod
-    def get_prices_for_multiple_properties_save_to_file(username, password, property_ids, date_from, date_to, api_endpoint, file_path="property_prices.json"):
+    def get_prices_for_multiple_properties_save_to_file(username, password, property_ids, date_from, date_to, api_endpoint, file_path="data/property_prices.json"):
         prices_dict = {}
 
         for property_id in property_ids:
@@ -58,7 +58,7 @@ class Pull_ListPropertyPrices_RQ:
 
 
     @staticmethod
-    def get_all_prices(file_path="property_prices.json"):
+    def get_all_prices(file_path="data/property_prices.json"):
         # Check if the file exists
         if os.path.exists(file_path):
             with open(file_path, "r") as file:
@@ -83,6 +83,12 @@ class Pull_ListPropertyPrices_RQ:
 
     @staticmethod
     def calculate_ru_price(property_id, guests, date_from, date_to):
+        # 🧠 Ensure both are pure date objects
+        if isinstance(date_from, datetime):
+            date_from = date_from.date()
+        if isinstance(date_to, datetime):
+            date_to = date_to.date()
+        
         saved_prices = Pull_ListPropertyPrices_RQ.get_all_prices()
         
         property_data = saved_prices[str(property_id)]
@@ -101,8 +107,8 @@ class Pull_ListPropertyPrices_RQ:
         # Iterate over each night in the stay
         while current_date < date_to:
             for season in prices_info["Season"]:
-                season_start = datetime.strptime(season["@DateFrom"], "%Y-%m-%d")
-                season_end = datetime.strptime(season["@DateTo"], "%Y-%m-%d")
+                season_start = datetime.strptime(season["@DateFrom"], "%Y-%m-%d").date()
+                season_end = datetime.strptime(season["@DateTo"], "%Y-%m-%d").date()
 
                 # If the current night falls within a season range, add its price
                 if season_start <= current_date <= season_end:

@@ -1,1 +1,78 @@
-.env
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*$py.class
+
+# --- Virtual Environment ---
+venv/
+.env/
+.env.*
+.venv/
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# --- OS Files ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+logs/
+*.out
+
+# --- Byte-compiled / cache ---
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+sdist/
+develop-eggs/
+.installed.cfg
+*.manifest
+*.spec
+
+# --- Testing / Coverage ---
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+.pytest_cache/
+.cache/
+junit.xml
+
+# --- Environment / Credentials ---
+# keep config.py tracked (you have it in repo)
+# but ignore any private settings files
+config.local.py
+secrets.json
+*.pem
+*.key
+
+# --- Docker ---
+*.pid
+*.tar
+*.log
+__docker_build__/
+# Docker build artifacts
+*.bak
+*.tmp
+
+# --- Data files you might not want in git ---
+# keep your data directory but ignore large or temp files
+data/*.tmp
+data/*.bak
+data/*.log
+
+# --- Misc ---
+*.swp
+*.swo
