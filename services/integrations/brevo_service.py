@@ -1,52 +1,54 @@
-from sendgrid.helpers.mail import Mail
-from sendgrid import SendGridAPIClient
-import traceback
-from mailersend import emails
-
-import brevo_python
-from brevo_python.rest import ApiException
-
-import traceback
 import logging
+from datetime import datetime
+import traceback
+import jwt
+import hashlib
+from typing import Dict, Any, Optional
+from fastapi import Request, HTTPException, status
+import requests
+from supabase import create_client, Client
+from datetime import datetime
+from schemas.payments import DateModel
+from schemas.payments import CreateCheckoutRequest
+from schemas.booking import  Booking
+from utils.exceptions import *
+from brevo_python.rest import ApiException
+import brevo_python
 
-from property_price import Pull_ListPropertyPrices_RQ
+from services.integrations.rentals_united.property_price import Pull_ListPropertyPrices_RQ
 
-class create_email:
-    def __init__(self, name, clientPrice, booking_reference , date_from, date_to,apartmentName, phone, adults, children, childrenAges, nights, refundable, email, specialRequests, cancel, diffDays, ruPrice):
-        self.name = name
-        self.clientPrice = clientPrice
-        self.booking_reference = booking_reference
-        self.apartmentName = apartmentName
-        self.phone = phone
-        self.date_from = date_from
-        self.date_to = date_to
-        self.adults = adults
-        self.children = children
-        self.childrenAges = childrenAges
-        self.nights = nights
-        self.refundable = refundable
-        self.email = email
-        self.specialRequests = specialRequests
+
+from config import settings
+
+logger = logging.getLogger(__name__)
+
+class BrevoService:
+    def __init__(self, booking: Booking, cancel: bool):
+        self.brevo_key = settings.email
+        self.booking = booking
         self.cancel = cancel
-        self.diffDays = diffDays
-        self.ruPrice = ruPrice
+        
+        today = datetime.today()
+        self.diffDays = (booking.date_from - today).days
+        
+        self.booking.date_from = f"{booking.date_from.day} {booking.date_from.strftime('%b')} {booking.date_from.year}"
+        self.booking.date_to = f"{booking.date_to.day} {booking.date_to.strftime('%b')} {booking.date_to.year}"
 
 
-    # Currently using brevo for this
-    def send_email(self, api_key):
+    def send_email(self):
         # 1. Define the subject
         if self.cancel:
-            subject = f"Reservation has been cancelled: Rosedene Highland House No.{self.booking_reference}"
+            subject = f"Reservation has been cancelled: Rosedene Highland House No.{self.booking.ru_booking_reference}"
         else:
-            subject = f"Confirmation of your reservation: Rosedene Highland House No.{self.booking_reference}"
+            subject = f"Confirmation of your reservation: Rosedene Highland House No.{self.booking.ru_booking_reference}"
 
         # 2. Setup Brevo config
         configuration = brevo_python.Configuration()
-        configuration.api_key['api-key'] = api_key
+        configuration.api_key['api-key'] = self.brevo_key
 
         # 3. Create the email payload
         email_data = brevo_python.SendSmtpEmail(
-            to=[{"email": self.email}],
+            to=[{"email": self.booking.email}],
             sender={"name": "Rosedene Bookings", "email": "booking@rosedenedirect.com"},
             subject=subject,
             html_content=self.create_html(),  # Your custom HTML
@@ -62,79 +64,21 @@ class create_email:
             print("Exception when sending email via Brevo:")
             traceback.print_exc()
 
-    def send_email_mailersend(self, api_key):
-        mailer = emails.NewEmail(api_key)
-        mail_body = {}
-
-        if self.cancel:
-            subject_text = f"Reservation has been cancelled: Rosedene Highland House No.{self.booking_reference}"
-        else:
-            subject_text = f"Confirmation of your reservation: Rosedene Highland House No.{self.booking_reference}"
-
-        # FROM
-        mail_from = {
-            "name": "Rosedene Highland House",
-            "email": "booking@rosedenedirect.com"
-        }
-
-        # TO
-        recipients = [{
-            "name": self.name,
-            "email": self.email
-        }]
-
-        # REPLY-TO (optional, modify as needed)
-        # reply_to = [{
-        #     "name": "Rosedene Support",
-        #     "email": "reply@rosedenedirect.com"
-        # }]
-
-        try:
-            mailer.set_mail_from(mail_from, mail_body)
-            mailer.set_mail_to(recipients, mail_body)
-            mailer.set_subject(subject_text, mail_body)
-            mailer.set_html_content(self.create_html(), mail_body)
-            mailer.set_plaintext_content("Your reservation details are attached in HTML format.", mail_body)
-            # mailer.set_reply_to(reply_to, mail_body)
-
-            response = mailer.send(mail_body)
-            print(response)  # for debugging/logging
-        except Exception as e:
-            traceback.print_exc()
-    
-    # This is used to send sendgrid emails but right now I am not using them because the free trial does not allow for outlook emails
-    def send_email_sendgrid(self, api_key):
-        if self.cancel:
-            subject_text = f"Reservation has been cancelled: Rosedene Highland House No.{self.booking_reference}"
-        else:
-            subject_text = f"Confirmation of your reservation: Rosedene Highland House No.{self.booking_reference}"
-
-        message = Mail(
-            from_email='booking@rosedenedirect.com',
-            to_emails=self.email,
-            subject=subject_text,
-            html_content=self.create_html())
-        try:
-            sg = SendGridAPIClient(api_key)
-            response = sg.send(message)
-        except Exception as e:
-            traceback.print_exc()  # full error trace
-
 
     def create_html(self):
 
         # Create the breakdown of costs
         breakdown = []
         try:
-            if self.nights > 0:
-                per_night_price = round(self.ruPrice / self.nights, 2)
+            if self.booking.nights > 0:
+                per_night_price = round(self.booking.ru_price / self.booking.nights, 2)
                 breakdown.append({
-                    "label": f"£{per_night_price} x {self.nights} nights",
-                    "amount": round(self.ruPrice, 2)
+                    "label": f"£{per_night_price} x {self.booking.nights} nights",
+                    "amount": round(self.booking.ru_price, 2)
                 })
 
-                if self.refundable:
-                    refundable_rate_fee = Pull_ListPropertyPrices_RQ.calculate_refundable_rate_fee(self.ruPrice)
+                if self.booking.refundable:
+                    refundable_rate_fee = Pull_ListPropertyPrices_RQ.calculate_refundable_rate_fee(self.booking.ru_price)
                     breakdown.append({
                         "label": "Refundable rate",
                         "amount": refundable_rate_fee
@@ -143,7 +87,7 @@ class create_email:
             logging.warning("⚠️ Zero nights in booking")
             breakdown.append({
                 "label": "Total booking amount",
-                "amount": round(self.ruPrice, 2)
+                "amount": round(self.booking.ru_price, 2)
             })
 
         # Generate HTML for email
@@ -201,12 +145,12 @@ class create_email:
                             <p style="color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; font-size: 14px; margin: 0 auto;">
                                 Since your booking was made on a <strong>refundable rate</strong>, you will receive a refund within <strong>5–7 business days</strong>.
                             </p>
-                            ''' if self.refundable and self.diffDays >= 13 else
+                            ''' if self.booking.refundable and self.diffDays >= 13 else
                             '''
                             <p style="color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; font-size: 14px; margin: 0 auto;">
                                 This booking was made on a <strong>refundable rate</strong>, but the <strong>14-day cancellation window</strong> has passed. A refund is no longer available.
                             </p>
-                            ''' if self.refundable and self.diffDays < 13 else
+                            ''' if self.booking.refundable and self.diffDays < 13 else
                             '''
                             <p style="color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; font-size: 14px; margin: 0 auto;">
                                 This booking was made on a <strong>non-refundable rate</strong>. Unfortunately, no refund will be issued.
@@ -262,17 +206,17 @@ class create_email:
                 <td style="padding-top: 20px;">
                     <p style="color:#6b7280; font-size:12px; font-weight:bold; margin:0 0 5px;">Special Requests</p>
                     <p style="height: 80px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; color: #6b7280; padding: 12px; margin: 0; width: 100%; box-sizing: border-box">
-                        {self.specialRequests}
+                        {self.booking.special_requests}
                     </p>
                 </td>
             </tr>
-        """ if self.specialRequests != "" else ""
+        """ if self.booking.special_requests != "" else ""
 
         greeting_html = f"""
                     <table role="presentation" width="100%" style="background:#ffffff; border:1px solid #d1d5db; border-radius:12px; padding:20px; margin-bottom: 60px;" cellpadding="0" cellspacing="0">
                         <tr>
                             <td style="color:#000000; font-size:14px; line-height:1.5;">
-                                <p style="margin:0 0 15px;">Dear {self.name},</p>
+                                <p style="margin:0 0 15px;">Dear {self.booking.name},</p>
                                 <p style="margin:0 0 15px;">We're sorry to hear that you've had to cancel your reservation at <span style="color:#C09A5B; font-weight:bold;">Rosedene Highland House</span>.</p>
                                 <p style="margin:0 0 15px;">Your cancellation has been successfully processed. Below you'll find the details of your original reservation for your records.</p>
                                 <p style="margin:0 0 15px;">We hope to welcome you in the future.</p>
@@ -286,7 +230,7 @@ class create_email:
                     <table role="presentation" width="100%" style="background:#ffffff; border:1px solid #d1d5db; border-radius:12px; padding:20px; margin-bottom: 60px;" cellpadding="0" cellspacing="0">
                         <tr>
                             <td style="color:#000000; font-size:14px; line-height:1.5;">
-                                <p style="margin:0 0 15px;">Dear {self.name},</p>
+                                <p style="margin:0 0 15px;">Dear {self.booking.name},</p>
                                 <p style="margin:0 0 15px;">Thank you for choosing <span style="color:#C09A5B; font-weight:bold;">Rosedene Highland House</span> for your next stay in <span style="color:#C09A5B; font-weight:bold;">Inverness</span>.</p>
                                 <p style="margin:0 0 15px;">Please see below for details of your reservation.</p>
                                 <p style="margin:0 0 15px;">We hope you enjoy your stay!</p>
@@ -420,7 +364,7 @@ class create_email:
                                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                                         <tr>
                                         <td style="color:#C09A5B; font-weight:bold;">Total (GBP)</td>
-                                        <td align="right" style="color:#C09A5B; font-weight:bold; font-size:22px;">£{self.clientPrice}</td>
+                                        <td align="right" style="color:#C09A5B; font-weight:bold; font-size:22px;">£{self.booking.client_price}</td>
                                         </tr>
                                     </table>
                                 </td>
@@ -443,7 +387,7 @@ class create_email:
                                 </td>
                                 <td style="padding-left: 15px;">
                                 <p style="color:#6b7280; font-size:12px; font-weight:bold; letter-spacing:1px; margin:0;">BOOKING REFERENCE</p>
-                                <p style="color:#C09A5B; font-size:32px; font-weight:bold; margin:5px 0 0;">{self.booking_reference}</p>
+                                <p style="color:#C09A5B; font-size:32px; font-weight:bold; margin:5px 0 0;">{self.booking.ru_booking_reference}</p>
                                 </td>
                             </tr>
                             </table>
@@ -452,7 +396,7 @@ class create_email:
                         
                         <tr>
                             <td style="padding:10px 0;" class="full-width-mobile">
-                                <table role="presentation" width="100%" style="background:#{'f0fdf4' if self.refundable and self.diffDays >= 13 else 'fef2f2'}; border:{'2px solid #84e1bc' if self.refundable and self.diffDays >= 13 else '1px solid #fecaca'}; border-radius:12px;">
+                                <table role="presentation" width="100%" style="background:#{'f0fdf4' if self.booking.refundable and self.diffDays >= 13 else 'fef2f2'}; border:{'2px solid #84e1bc' if self.booking.refundable and self.diffDays >= 13 else '1px solid #fecaca'}; border-radius:12px;">
                                     <tr>
                                         <td style="padding:15px;">
                                             <table role="presentation" cellpadding="0" cellspacing="0">
@@ -460,23 +404,23 @@ class create_email:
                                                     <td width="50" valign="top" align="center">
                                                         <table role="presentation" cellpadding="0" cellspacing="0">
                                                             <tr>
-                                                                <td align="center" style="background:#{'bbf7d0' if self.refundable and self.diffDays >= 13 else 'fecaca'}; width:44px; height:44px; border-radius:50%; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-                                                                    <img src="https://rosedenedirect.com/email/{'check-green.png' if self.refundable and self.diffDays >= 13 else 'x.png'}" width="20" height="20" alt="" style="display:block;">
+                                                                <td align="center" style="background:#{'bbf7d0' if self.booking.refundable and self.diffDays >= 13 else 'fecaca'}; width:44px; height:44px; border-radius:50%; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                                                                    <img src="https://rosedenedirect.com/email/{'check-green.png' if self.booking.refundable and self.diffDays >= 13 else 'x.png'}" width="20" height="20" alt="" style="display:block;">
                                                                 </td>
                                                             </tr>
                                                         </table>
                                                     </td>
                                                     <td style="padding-left: 15px;">
                                                         <p style="color:#374151; font-size:14px; margin:0 0 5px 0;">
-                                                            {'Refundable Booking — But the Refund Window Has Passed' if self.refundable and self.diffDays < 13 else 'Refundable Booking' if self.refundable else 'Non-Refundable Booking'}
+                                                            {'Refundable Booking — But the Refund Window Has Passed' if self.booking.refundable and self.diffDays < 13 else 'Refundable Booking' if self.booking.refundable else 'Non-Refundable Booking'}
                                                         </p>
 
                                                         <p style="color:#6b7280; font-size:12px; margin:0;">
                                                             {(
                                                                 "You are eligible for a refund if canceled 2 weeks before your check-in date."
-                                                                if self.refundable and self.diffDays >= 13 else
+                                                                if self.booking.refundable and self.diffDays >= 13 else
                                                                 "This booking was refundable, but the 14-day cancellation window has expired."
-                                                                if self.refundable else
+                                                                if self.booking.refundable else
                                                                 "This booking cannot be refunded after cancellation."
                                                             )}
                                                         </p>
@@ -507,7 +451,7 @@ class create_email:
                                             </div>
                                             <div style="display: inline-block; vertical-align: middle">
                                                 <p style="color:#6b7280; font-size:0.875rem; line-height: 1.25rem; margin:0 0 5px;">Check-in</p>
-                                                <p style="color:#000000; font-weight: 500; font-size:16px; margin:0;">{self.date_from}</p>
+                                                <p style="color:#000000; font-weight: 500; font-size:16px; margin:0;">{self.booking.date_from}</p>
                                             </div>
                                             </td>
                                         </tr>
@@ -524,7 +468,7 @@ class create_email:
                                             </div>
                                             <div style="display: inline-block; vertical-align: middle">
                                                 <p style="color:#6b7280; font-size:0.875rem; line-height: 1.25rem; margin:0 0 5px;">Check-out</p>
-                                                <p style="color:#000000; font-weight: 500; font-size:16px; margin:0;">{self.date_to}</p>
+                                                <p style="color:#000000; font-weight: 500; font-size:16px; margin:0;">{self.booking.date_to}</p>
                                             </div>
                                             </td>
                                         </tr>
@@ -561,7 +505,7 @@ class create_email:
                                                 <div style="display: inline-block; vertical-align: middle">
                                                     <p style="color:#6b7280; font-size:0.875rem; line-height: 1.25rem; margin:0 0 5px;">Guests</p>
                                                     <p style="color:#000000; font-weight: 500; font-size:16px; margin:0;">
-                                                        {self.adults} Adult{'s' if self.adults > 1 else ''} • {self.children} Child{'ren' if self.children > 1 else ''}
+                                                        {self.booking.adults} Adult{'s' if self.booking.adults > 1 else ''} • {self.booking.children} Child{'ren' if self.booking.children > 1 else ''}
                                                     </p>
                                                 </div>
                                             </td>
@@ -580,8 +524,8 @@ class create_email:
                                                 <div style="display: inline-block; vertical-align: middle">
                                                     <p style="color:#6b7280; font-size:0.875rem; line-height: 1.25rem; margin:0 0 5px;">Children Ages</p>
                                                         <p style="color:#000000; font-weight: 500; font-size:16px; margin:0;">
-                                                            {', '.join(str(age) for age in self.childrenAges) if self.childrenAges else '0 Children'}
-                                                            {'' if not self.childrenAges else '<span style="color:#6b7280; font-size:0.875rem; line-height: 1.25rem; font-weight:normal;">Years Old</span>'}
+                                                            {', '.join(str(age) for age in self.booking.children_ages) if self.booking.children_ages else '0 Children'}
+                                                            {'' if not self.booking.children_ages else '<span style="color:#6b7280; font-size:0.875rem; line-height: 1.25rem; font-weight:normal;">Years Old</span>'}
                                                         </p>
                                                 </div>
                                             </td>
@@ -614,7 +558,7 @@ class create_email:
                                     <tr>
                                     <td class="full-name">
                                         <p style="color:#6b7280; font-size:12px; font-weight:bold; margin:0 0 5px;">Full name</p>
-                                        <p style="background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; color: #6b7280; padding: 12px; margin: 0; width: 100%; box-sizing: border-box">{self.name}</p>
+                                        <p style="background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; color: #6b7280; padding: 12px; margin: 0; width: 100%; box-sizing: border-box">{self.booking.name}</p>
                                     </td>
                                     </tr>
                                 </table>
@@ -626,12 +570,12 @@ class create_email:
                                     <tr>
                                     <td width="48%" valign="top" class="guest-info-section">
                                         <p style="color:#6b7280; font-size:12px; font-weight:bold; margin:0 0 5px;">Email</p>
-                                        <p style="background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; color: #6b7280; padding: 12px; margin: 0; width: 100%; box-sizing: border-box">{self.email}</p>
+                                        <p style="background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; color: #6b7280; padding: 12px; margin: 0; width: 100%; box-sizing: border-box">{self.booking.email}</p>
                                     </td>
                                     <td width="4%" class="guest-info-spacer"></td>
                                     <td width="48%" valign="top" class="guest-info-section">
                                         <p style="color:#6b7280; font-size:12px; font-weight:bold; margin:0 0 5px;">Phone</p>
-                                        <p style="background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; color: #6b7280; padding: 12px; margin: 0; width: 100%; box-sizing: border-box">{self.phone}</p>
+                                        <p style="background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; color: #6b7280; padding: 12px; margin: 0; width: 100%; box-sizing: border-box">{self.booking.phone}</p>
                                     </td>
                                     </tr>
                                 </table>
@@ -644,7 +588,7 @@ class create_email:
                         </tr>
                         <tr>
                         <td align="center" style="padding-top:60px;">
-                            <a target="_blank" href="https://rosedenedirect.com/details?ref_number={self.booking_reference}&email={self.email}" class="view-details-btn" style="transition: background-color 0.3s ease; display: inline-block; background-color: #C09A5B; font-weight: bold; text-decoration: none; text-align: center; padding: 14px 28px; border-radius: 8px; font-size: 16px; margin: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); color: #ffffff">
+                            <a target="_blank" href="https://rosedenedirect.com/details?ref_number={self.booking.ru_booking_reference}&email={self.booking.email}" class="view-details-btn" style="transition: background-color 0.3s ease; display: inline-block; background-color: #C09A5B; font-weight: bold; text-decoration: none; text-align: center; padding: 14px 28px; border-radius: 8px; font-size: 16px; margin: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); color: #ffffff">
                             View & Manage Your Booking
                             </a>
                         </td>
