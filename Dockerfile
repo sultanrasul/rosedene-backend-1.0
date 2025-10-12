@@ -18,4 +18,5 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 8080
 
 # Use Gunicorn with Uvicorn workers (for FastAPI)
-CMD ["gunicorn", "main:app", "--workers", "2", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--timeout", "0", "--threads", "8"]
+# CMD ["gunicorn", "main:app", "--workers", "2", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--timeout", "0", "--threads", "8"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
