@@ -19,4 +19,3 @@ EXPOSE 8080
 
 # Use Gunicorn with Uvicorn workers (for FastAPI)
 CMD ["gunicorn", "main:app", "--workers", "2", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--timeout", "0", "--threads", "8"]
-
