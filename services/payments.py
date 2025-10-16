@@ -37,7 +37,8 @@ class PaymentService:
         childrenAges = booking_data.children_ages
 
         user_id = booking_data.user_id
-        name = booking_data.name
+        first_name = booking_data.first_name
+        last_name = booking_data.last_name
         email = booking_data.email
         phone = booking_data.phone
         special_requests = booking_data.special_requests
@@ -90,46 +91,61 @@ class PaymentService:
         return response
     
     async def complete_checkout_session(self, event: dict):
-
-        # 1. Retrieve payment intent
+        # 1. Retrieve payment intent & metadata
         payment_intent_id = event["data"]["object"].get("payment_intent")
         meta = event["data"]["object"].get("metadata")
-
         booking_uuid = meta["booking_uuid"]
-        booking = await supabase_service.get_booking_uuid_data(booking_id=booking_uuid) # Returns Booking Data Schema
 
-        # Get Billing Details from Stripe (e.g. Country Postal Code) -> Update Data on Supabase
+        # 2. Get booking data from Supabase
+        booking = await supabase_service.get_booking_uuid_data(booking_id=booking_uuid)
+
+        # ✅ Check if booking already has a reference — skip if so
+        if booking.ru_booking_reference:
+            print(f"✅ Booking {booking_uuid} already completed (Ref: {booking.ru_booking_reference}). Skipping checkout.")
+            return {
+                "message": "Booking already completed",
+                "reference": booking.ru_booking_reference
+            }
+
+        # 3. Update billing details from Stripe (country, postal code)
         billing_details = event["data"]["object"].get("billing_details")
         country = billing_details["address"]["country"]
         postal_code = billing_details["address"]["postal_code"]
-        await supabase_service.update_booking(booking_id=booking_uuid, zip_code=postal_code, country=country)
+        await supabase_service.update_booking(
+            booking_id=booking_uuid,
+            zip_code=postal_code,
+            country=country
+        )
 
-
-        # Add Booking To Rentals United through the Rentals United service
+        # 4. Create booking in Rentals United
         try:
             booking_reference = await rentals_united_service.create_booking(booking)
         except RentalsUnitedError as e:
             # Cancel the Stripe payment and provide feedback
             print(f"🚨 Rentals United Error: #{e.code} - {e.message}")
             await self._cancel_payment_intent(payment_intent_id, reason=e.message)
-
             raise HTTPException(status_code=409, detail=e.message)
 
-        # Update Supabase Booking Record
-        await supabase_service.update_booking(booking_id=booking_uuid, ru_booking_reference=booking_reference, ru_status="confirmed")
+        # 5. Update Supabase with Rentals United data
+        await supabase_service.update_booking(
+            booking_id=booking_uuid,
+            ru_booking_reference=booking_reference,
+            ru_status="confirmed"
+        )
 
-        # Capture payment, Update Supabase and Stripe metadata
+        # 6. Capture payment and sync metadata
         await self._capture_payment_intent(payment_intent_id, booking_reference, booking_uuid)
 
-        # Send Email Using Brevos Service also fetch again after updating the booking record
+        # 7. Send confirmation email
         booking = await supabase_service.get_booking_uuid_data(booking_id=booking_uuid)
         brevo_service = BrevoService(booking, cancel=False)
         brevo_service.send_email()
 
         return {
-                "message": "Booking completed", 
-                "reference": booking_reference
-            }
+            "message": "Booking completed",
+            "reference": booking_reference
+        }
+
 
     def _validate_booking_data(self, data: Dict):
         """Validate booking request data"""
