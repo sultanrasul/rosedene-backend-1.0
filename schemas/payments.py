@@ -20,7 +20,8 @@ class CreateCheckoutRequest(BaseModel):
     children: int = Field(ge=0, le=6, example=1)
     children_ages: Optional[List[int]] = Field(default=[], example=[6])
     user_id: Optional[str] = Field(default=None, example="user_12345")
-    name: str = Field(example="John Doe")
+    first_name: str = Field(example="John")
+    last_name: str = Field(example="Doe")
     email: EmailStr = Field(example="john.doe@example.com")
     phone: str = Field(example="+1234567890")
     special_requests: Optional[str] = Field(default=None, example="Late check-in if possible")
@@ -36,4 +37,4 @@ class CheckCalendarRequest(BaseModel):
     apartment_id: int
 
 class CheckPriceRequest(BaseModel):
-    apartment_id: int
+    apartment_id: int = Field(example=3070531)

@@ -24,9 +24,6 @@ class Settings(BaseSettings):
     # Brevo Email Service 
     email: str
     
-    # Frontend
-    frontend_url: str = "https://www.rosedenedirect.com"
-    
     # Environment
     ENV: str = "testing"
     

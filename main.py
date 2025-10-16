@@ -5,7 +5,7 @@ from config import settings
 from utils.exceptions import http_exception_handler
 import uvicorn
 
-app = FastAPI(title="Rosedene Direct API")
+app = FastAPI(title="Direct Booking API")
 
 
 

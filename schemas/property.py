@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 class DateModel(BaseModel):
@@ -14,7 +14,7 @@ class BlockedApartmentsRequest(BaseModel):
     date_to: DateModel
 
 class CheckCalendarRequest(BaseModel):
-    apartment_id: int
+    apartment_id: int = Field(example=3070531)
 
 class CheckPriceRequest(BaseModel):
-    apartment_id: int
+    apartment_id: int = Field(example=3070531)

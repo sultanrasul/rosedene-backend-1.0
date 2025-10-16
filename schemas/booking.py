@@ -7,7 +7,8 @@ from decimal import Decimal
 class Booking(BaseModel):
     id: UUID
     user_id: Optional[UUID] = None
-    name: str
+    first_name: str
+    last_name: str
     email: EmailStr
     phone: Optional[str] = None
     zip_code: Optional[str] = None

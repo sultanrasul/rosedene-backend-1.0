@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from services.integrations.supabase_service import SupabaseService
 from services.integrations.rentals_united_service import RentalsUnitedService
 from schemas.property import *
 
@@ -21,6 +22,8 @@ async def get_blocked_apartments(request: BlockedApartmentsRequest):
 @router.post("/check-calendar")
 async def check_calendar(request: CheckCalendarRequest):
     """Returns the availability calendar for specific apartment"""
+
+
     date_from = datetime.today()
     date_to = date_from + relativedelta(years=5)
     
